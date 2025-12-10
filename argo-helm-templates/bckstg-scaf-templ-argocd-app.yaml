@@ -1,0 +1,49 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: argocd-application-creator
+  title: Create ArgoCD Application Manifest
+  description: Creates a new ArgoCD Application YAML based on shared infra values.
+  tags:
+    - argocd
+    - gitops
+    - helm
+spec:
+  owner: group:devops
+  type: gitops-config
+
+  parameters:
+    - title: Application Naming
+      required: [bkst_app_name]
+      properties:
+        bkst_app_name:
+          title: Backstage Application Name
+          type: string
+          description: Unique name for the application (e.g., 'payroll-service').
+    # Add other inputs here that you need to pass to the Scaffolder actions,
+    # such as the GitOps repo URL, branch name, etc.
+
+  steps:
+    - id: fetch-base
+      name: Fetch and Render Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        # Assuming you put your ArgoCD manifest into a 'skeleton' folder
+        targetPath: .
+        values:
+          # Pass only the necessary variables to the templating engine
+          bkst_app_name: ${{ parameters.bkst_app_name }}
+
+    - id: publish-manifest
+      name: Publish to GitOps Repository (GitLab)
+      action: publish:gitlab # Replace with 'publish:github' if needed
+      input:
+        repoUrl: https://gitlab.itgix.com/your-org/your-gitops-repo # Replace with dynamic parameter
+        branch: new-app/${{ parameters.bkst_app_name }}
+        sourcePath: . # Publish the generated file from the workspace
+        commitMessage: 'feat: Add ArgoCD Application for ${{ parameters.bkst_app_name }}'
+
+  output:
+    links:
+      - title: Go to Repository
