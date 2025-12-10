@@ -9,7 +9,7 @@ metadata:
     - gitops
     - helm
 spec:
-  owner: group:devops
+  owner: unknown/guest
   type: gitops-config
 
   parameters:
