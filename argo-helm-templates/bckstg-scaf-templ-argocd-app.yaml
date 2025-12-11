@@ -35,14 +35,15 @@ spec:
           # Pass only the necessary variables to the templating engine
           bkst_app_name: ${{ parameters.bkst_app_name }}
 
-    - id: publish-manifest
-      name: Publish to GitOps Repository
-      action: publish:github # Replace with 'publish:github' or publish:gitlab if needed
-      input:
-        repoUrl: github.com?owner=itgix&repo=adp-demo-client-test # Replace with dynamic parameter
-        #branch: new-app/${{ parameters.bkst_app_name }}
-        sourcePath: . # Publish the generated file from the workspace
-        #commitMessage: 'feat: Add ArgoCD Application for ${{ parameters.bkst_app_name }}'
+# This will actually create the repo
+#    - id: publish-manifest
+#      name: Publish to GitOps Repository
+#      action: publish:github # Replace with 'publish:github' or publish:gitlab if needed
+#      input:
+#        repoUrl: github.com?owner=itgix&repo=adp-demo-client-test # Replace with dynamic parameter
+#        #branch: new-app/${{ parameters.bkst_app_name }}
+#        sourcePath: . # Publish the generated file from the workspace
+#        #commitMessage: 'feat: Add ArgoCD Application for ${{ parameters.bkst_app_name }}'
 
     # STEP 2: Create a Pull Request (This pushes a new branch and opens the PR)
     - id: create-pull-request
