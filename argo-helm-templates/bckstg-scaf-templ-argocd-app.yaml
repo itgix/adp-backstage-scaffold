@@ -40,9 +40,9 @@ spec:
       action: publish:github # Replace with 'publish:github' or publish:gitlab if needed
       input:
         repoUrl: https://github.com/itgix/adp-demo-client-test # Replace with dynamic parameter
-        branch: new-app/${{ parameters.bkst_app_name }}
+        #branch: new-app/${{ parameters.bkst_app_name }}
         sourcePath: . # Publish the generated file from the workspace
-        commitMessage: 'feat: Add ArgoCD Application for ${{ parameters.bkst_app_name }}'
+        #commitMessage: 'feat: Add ArgoCD Application for ${{ parameters.bkst_app_name }}'
 
     # STEP 2: Create a Pull Request (This pushes a new branch and opens the PR)
     - id: create-pull-request
