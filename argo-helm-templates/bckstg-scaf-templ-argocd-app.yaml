@@ -39,7 +39,7 @@ spec:
       name: Publish to GitOps Repository
       action: publish:github # Replace with 'publish:github' or publish:gitlab if needed
       input:
-        repoUrl: github.com/itgix/adp-demo-client-test.git # Replace with dynamic parameter
+        repoUrl: itgix/adp-demo-client-test.git # Replace with dynamic parameter
         #branch: new-app/${{ parameters.bkst_app_name }}
         sourcePath: . # Publish the generated file from the workspace
         #commitMessage: 'feat: Add ArgoCD Application for ${{ parameters.bkst_app_name }}'
@@ -50,7 +50,7 @@ spec:
       # This action is designed specifically for feature branching and PR creation
       action: publish:github:pull-request
       input:
-        repoUrl: 'github.com/itgix/adp-demo-client-test.git'
+        repoUrl: 'itgix/adp-demo-client-test.git'
         branchName: 'feat/new-app-${{ parameters.bkst_app_name }}'
         title: 'New App: ${{ parameters.bkst_app_name }} Scaffolded'
         gitCommitMessage: 'feat: Initial scaffold for ${{ parameters.bkst_app_name }}'
