@@ -17,11 +17,11 @@ spec:
       required: [bkst_app_name]
       properties:
         bkst_app_name:
-          title: Backstage Application Name
+          title: New Application Name
           type: string
           description: Unique name for the application (e.g., 'payroll-service').
     # Add other inputs here that you need to pass to the Scaffolder actions,
-    # such as the GitOps repo URL, branch name, etc.
+    # such as the GitOps repo URL, branch name, image etc.
 
   steps:
     - id: fetch-base
@@ -36,7 +36,7 @@ spec:
           bkst_app_name: ${{ parameters.bkst_app_name }}
 
     - id: publish-manifest
-      name: Publish to GitOps Repository (GitLab)
+      name: Publish to GitOps Repository
       action: publish:github # Replace with 'publish:github' or publish:gitlab if needed
       input:
         repoUrl: https://github.com/itgix/adp-demo-client-test # Replace with dynamic parameter
@@ -44,6 +44,20 @@ spec:
         sourcePath: . # Publish the generated file from the workspace
         commitMessage: 'feat: Add ArgoCD Application for ${{ parameters.bkst_app_name }}'
 
+    # STEP 2: Create a Pull Request (This pushes a new branch and opens the PR)
+    - id: create-pull-request
+      name: Create Feature Branch and Pull Request
+      # This action is designed specifically for feature branching and PR creation
+      action: publish:github:pull-request
+      input:
+        repoUrl: 'https://github.com/itgix/adp-demo-client-test'
+        branchName: 'feat/new-app-${{ parameters.bkst_app_name }}'
+        title: 'New App: ${{ parameters.bkst_app_name }} Scaffolded'
+        gitCommitMessage: 'feat: Initial scaffold for ${{ parameters.bkst_app_name }}'
+        sourcePath: .
+        description: 'This PR adds the initial configuration for the new application.'
+
   output:
     links:
       - title: Go to Repository
+    remoteUrl: ${{ steps['create-pull-request'].output.remoteUrl }}
