@@ -37,9 +37,9 @@ spec:
 
     - id: publish-manifest
       name: Publish to GitOps Repository (GitLab)
-      action: publish:gitlab # Replace with 'publish:github' if needed
+      action: publish:github # Replace with 'publish:github' or publish:gitlab if needed
       input:
-        repoUrl: https://gitlab.itgix.com/your-org/your-gitops-repo # Replace with dynamic parameter
+        repoUrl: https://github.com/itgix/adp-demo-client-test # Replace with dynamic parameter
         branch: new-app/${{ parameters.bkst_app_name }}
         sourcePath: . # Publish the generated file from the workspace
         commitMessage: 'feat: Add ArgoCD Application for ${{ parameters.bkst_app_name }}'
