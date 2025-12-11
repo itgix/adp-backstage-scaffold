@@ -54,9 +54,8 @@ spec:
         repoUrl: 'github.com?owner=itgix&repo=adp-demo-client-test'
         branchName: 'feat/new-app-${{ parameters.bkst_app_name }}'
         title: 'New App: ${{ parameters.bkst_app_name }} Scaffolded'
-        gitCommitMessage: 'feat: Initial scaffold for ${{ parameters.bkst_app_name }}'
         sourcePath: .
-        description: 'This PR adds the initial configuration for the new application.'
+        description: 'This PR adds the initial configuration for the new application ${{ parameters.bkst_app_name }}.'
 
   output:
     links:
