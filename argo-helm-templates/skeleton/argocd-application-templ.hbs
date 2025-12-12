@@ -1,23 +1,23 @@
-{{- if index .Values "infra-services" "app_${{ bkst_app_name }}_enabled" }}
+{{- if index .Values "infra-services" "app_${{ values.bkst_app_name }}_enabled" }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ${{ bkst_app_name }}
+  name: ${{ values.bkst_app_name }}
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 spec:
   destination:
-    namespace: ${{ bkst_app_name }}
+    namespace: ${{ values.bkst_app_name }}
     server: https://kubernetes.default.svc
   project: 'applications'
   source:
     helm:
-      releaseName: ${{ bkst_app_name }}
+      releaseName: ${{ values.bkst_app_name }}
       valueFiles:
       - ../applications/values/{{ index .Values "infra-services" "environment" }}/{{ index .Values "infra-services" "region" }}/infra-facts.yaml
-      - ../${{ bkst_app_name }}/values.yaml
-      - ../${{ bkst_app_name }}/values/{{ index .Values "infra-services" "environment" }}/{{ index .Values "infra-services" "region" }}/values.yaml
+      - ../${{ values.bkst_app_name }}/values.yaml
+      - ../${{ values.bkst_app_name }}/values/{{ index .Values "infra-services" "environment" }}/{{ index .Values "infra-services" "region" }}/values.yaml
       values: |
         global:
           vars:
@@ -38,7 +38,7 @@ spec:
               tls: false
               baseDomain: {{ index .Values "infra-services" "dns_main_domain" }}
           
-    path: helm/${{ bkst_app_name }}
+    path: helm/${{ values.bkst_app_name }}
     repoURL: {{ index .Values "infra-services" "applications_destination_repo" }}
     targetRevision: HEAD
   syncPolicy:
