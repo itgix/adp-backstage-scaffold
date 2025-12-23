@@ -33,11 +33,16 @@ spec:
               property: password
           ingress:
             annotations:
-              external-dns.alpha.kubernetes.io/hostname: tokenization-component.{{ index .Values "infra-services" "environment" }}.{{ index .Values "infra-services" "dns_main_domain" }}.
+              external-dns.alpha.kubernetes.io/hostname: {{ parameters.bkst_app_url_prefix }}-{{ index .Values "infra-services" "environment" }}.{{ index .Values "infra-services" "dns_main_domain" }}.
             dynamic:
+              enabled: true
               tls: false
               baseDomain: {{ index .Values "infra-services" "dns_main_domain" }}
-          
+              cfgs:
+              - name: {{ parameters.bkst_app_name }}
+                paths:
+                  - /
+                port: 80
     path: helm/${{ values.bkst_app_name }}
     repoURL: {{ index .Values "infra-services" "applications_destination_repo" }}
     targetRevision: HEAD

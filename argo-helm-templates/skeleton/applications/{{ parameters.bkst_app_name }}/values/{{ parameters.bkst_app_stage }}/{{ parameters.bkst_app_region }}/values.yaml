@@ -1,0 +1,103 @@
+global:
+  # Variables that are used to build env vars for the specific environment
+  vars:
+    ENV_NAME: "{{ parameters.bkst_app_stage }}"
+  # Env variables that are applied to every service
+  env:
+    AWS_REGION: "{{ parameters.bkst_app_region }}"
+
+{{ parameters.bkst_app_name }}:
+  enabled: true
+  appId: {{ parameters.bkst_app_name }}
+  cm:
+    enabled: true
+    env:
+      SAMPLE_VAR: "sampleval"
+    dynamic:
+      DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
+      REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
+      AWS_REGION: "{{ .Values.global.env.AWS_REGION }}"
+
+  ingress:
+    enabled: true
+    annotations:
+      alb.ingress.kubernetes.io/actions.response-503: |
+        {"type":"fixed-response","fixedResponseConfig":{"contentType":"text/plain","statusCode":"503","messageBody":"503 Service Unavailable"}}
+      alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig":
+        { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+      alb.ingress.kubernetes.io/group.name: public
+      alb.ingress.kubernetes.io/healthcheck-path: /
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/success-codes: 200-404
+      alb.ingress.kubernetes.io/target-type: ip
+      kubernetes.io/ingress.class: alb
+    dynamic:
+      enabled: true
+      nsPrefix: false
+      tls: true
+      cfgs:
+      - name: {{ parameters.bkst_app_name }}
+        paths:
+          - /
+        port: 80
+
+  deployment:
+    enabled: true
+    replicaCount: 1
+    image:
+      ecr: "{{ parameters.bkst_app_imagereg }}"
+      repository: "{{ parameters.bkst_app_imagename}}"
+      tag: "{{ parameters.bkst_app_image_tag }}"
+      pullPolicy: "Always"
+
+    securityContext:
+      enabled: true
+      runAsUser: 0
+      fsGroup: 101
+
+    ports:
+    - name: application
+      containerPort: 80
+      protocol: TCP
+
+    resources:
+      enabled: true
+      requests:
+        memory: {{ parameters.bkst_app_mem }}
+        cpu: 50m
+      limits:
+        memory: {{ parameters.bkst_app_mem }}
+        cpu: {{ parameters.bkst_app_cpu_limit }}
+
+    probes:
+      enabled: true
+      content:
+        startupProbe:
+          httpGet:
+            path: {{ parameters.bkst_app_health_probe }}
+            port: 80
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 20
+
+        livenessProbe:
+          httpGet:
+            path: {{ parameters.bkst_app_health_probe }}
+            port: 80
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 60
+          failureThreshold: 2
+
+        readinessProbe:
+          httpGet:
+            path: {{ parameters.bkst_app_health_probe }}
+            port: 80
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 60
+          failureThreshold: 2
+
+  jobs: []
