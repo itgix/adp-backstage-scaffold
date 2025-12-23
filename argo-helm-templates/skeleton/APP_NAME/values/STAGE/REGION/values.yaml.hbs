@@ -1,14 +1,14 @@
 global:
   # Variables that are used to build env vars for the specific environment
   vars:
-    ENV_NAME: "${{ parameters.bkst_app_stage }}"
+    ENV_NAME: "${{ values.bkst_app_stage }}"
   # Env variables that are applied to every service
   env:
-    AWS_REGION: "${{ parameters.bkst_app_region }}"
+    AWS_REGION: "${{ values.bkst_app_region }}"
 
-${{ parameters.bkst_app_name }}:
+${{ values.bkst_app_name }}:
   enabled: true
-  appId: ${{ parameters.bkst_app_name }}
+  appId: ${{ values.bkst_app_name }}
   cm:
     enabled: true
     env:
@@ -37,7 +37,7 @@ ${{ parameters.bkst_app_name }}:
       nsPrefix: false
       tls: true
       cfgs:
-      - name: ${{ parameters.bkst_app_name }}
+      - name: ${{ values.bkst_app_name }}
         paths:
           - /
         port: 80
@@ -46,9 +46,9 @@ ${{ parameters.bkst_app_name }}:
     enabled: true
     replicaCount: 1
     image:
-      ecr: "${{ parameters.bkst_app_imagereg }}"
-      repository: "${{ parameters.bkst_app_imagename}}"
-      tag: "${{ parameters.bkst_app_image_tag }}"
+      ecr: "${{ values.bkst_app_imagereg }}"
+      repository: "${{ values.bkst_app_imagename}}"
+      tag: "${{ values.bkst_app_image_tag }}"
       pullPolicy: "Always"
 
     securityContext:
@@ -64,18 +64,18 @@ ${{ parameters.bkst_app_name }}:
     resources:
       enabled: true
       requests:
-        memory: ${{ parameters.bkst_app_mem }}
+        memory: ${{ values.bkst_app_mem }}
         cpu: 50m
       limits:
-        memory: ${{ parameters.bkst_app_mem }}
-        cpu: ${{ parameters.bkst_app_cpu_limit }}
+        memory: ${{ values.bkst_app_mem }}
+        cpu: ${{ values.bkst_app_cpu_limit }}
 
     probes:
       enabled: true
       content:
         startupProbe:
           httpGet:
-            path: ${{ parameters.bkst_app_health_probe }}
+            path: ${{ values.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -84,7 +84,7 @@ ${{ parameters.bkst_app_name }}:
 
         livenessProbe:
           httpGet:
-            path: ${{ parameters.bkst_app_health_probe }}
+            path: ${{ values.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -93,7 +93,7 @@ ${{ parameters.bkst_app_name }}:
 
         readinessProbe:
           httpGet:
-            path: ${{ parameters.bkst_app_health_probe }}
+            path: ${{ values.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5

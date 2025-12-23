@@ -112,7 +112,7 @@ ${{ parameters.bkst_app_name }}:
       content:
         startupProbe:
           httpGet:
-            path: ${{ parameters.bkst_app_health_probe }}
+            path: ${{ values.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -121,7 +121,7 @@ ${{ parameters.bkst_app_name }}:
 
         livenessProbe:
           httpGet:
-            path: ${{ parameters.bkst_app_health_probe }}
+            path: ${{ values.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -130,7 +130,7 @@ ${{ parameters.bkst_app_name }}:
 
         readinessProbe:
           httpGet:
-            path: ${{ parameters.bkst_app_health_probe }}
+            path: ${{ values.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
