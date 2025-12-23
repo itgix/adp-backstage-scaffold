@@ -83,14 +83,31 @@ spec:
       action: fs:rename
       input:
         files:
-          - from: helm/APP_NAME
-            to: helm/${{ parameters.bkst_app_name }}
-          - from: helm/${{ parameters.bkst_app_name }}/values/STAGE
-            to: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}
-          - from: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/REGION
-            to: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/${{ parameters.bkst_app_region }}
-          - from: helm/applications/templates/argocd-application-templ.yaml.hbs
-            to: helm/applications/templates/application-${{ parameters.bkst_app_name }}.yaml
+        # 1) deepest files FIRST (strip .hbs)
+        - from: helm/APP_NAME/values/STAGE/REGION/values.yaml.hbs
+          to: helm/APP_NAME/values/STAGE/REGION/values.yaml
+
+        - from: helm/APP_NAME/values.yaml.hbs
+          to: helm/APP_NAME/values.yaml
+
+        - from: helm/APP_NAME/Chart.yaml.hbs
+          to: helm/APP_NAME/Chart.yaml
+
+        # 2) argocd application template (already outside APP_NAME)
+        - from: helm/applications/templates/argocd-application-templ.yaml.hbs
+          to: helm/applications/templates/application-${{ parameters.bkst_app_name }}.yaml
+
+        # 3) REGION directory
+        - from: helm/APP_NAME/values/STAGE/REGION
+          to: helm/APP_NAME/values/STAGE/${{ parameters.bkst_app_region }}
+
+        # 4) STAGE directory
+        - from: helm/APP_NAME/values/STAGE
+          to: helm/APP_NAME/values/${{ parameters.bkst_app_stage }}
+
+        # 5) APP_NAME directory LAST
+        - from: helm/APP_NAME
+          to: helm/${{ parameters.bkst_app_name }}
 
 # This will actually create the repo
 #    - id: publish-manifest
