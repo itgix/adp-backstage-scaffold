@@ -94,5 +94,5 @@ spec:
 
   output:
     links:
-      - title: Go to Repository
-    remoteUrl: ${{ steps['create-pull-request'].output.remoteUrl }}
+      - title: Open Pull Request
+        url: ${{ steps['create-pull-request'].output.remoteUrl }}
