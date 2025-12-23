@@ -14,64 +14,43 @@ spec:
 
   parameters:
     - title: Application Naming
-      required: [bkst_app_name]
+      required: [bkst_app_name,bkst_stage,bkst_app_region]
       properties:
         bkst_app_name:
           title: New Application Name
           type: string
           description: Unique name for the application (e.g., 'payroll-service').
-    - title: Stage
-      required: [bkst_app_stage]
-      properties:
         bkst_stage:
           title: On which stage to deploy
           type: string
           description: Stage (e.g., 'dev' or 'staging' or 'prod').
-    - title: Region
-      required: [bkst_app_region]
-      properties:
         bkst_app_region:
           title: On which region will the app run
           type: string
           description: The cloud region (e.g., 'eu-west-2').
-    - title: Container image address
-      required: [bkst_app_imagereg]
+    - title: Container image and resources
+      required: [bkst_app_imagename,bkst_app_image_tag,bkst_app_mem,bkst_app_cpu_limit]
       properties:
         bkst_app_imagereg:
           title: Container registry
           type: string
-          description: The address of the container registry containing the image (e.g., 'docker.io').
-    - title: Container image address
-      required: [bkst_app_imagename]
-      properties:
+          description: The address of the container registry containing the image (e.g., 'docker.io/').  It should end with a "/" or it can be omitted if it's docker.io
         bkst_app_imagename:
           title: Container image name
           type: string
           description: The address of the container registry containing the image (e.g., 'myapp').
-    - title: Container image tag
-      required: [bkst_app_image_tag]
-      properties:
         bkst_app_image_tag:
           title: Container image tag
           type: string
           description: The tag of the container image(e.g., 'v1.0.0').
-    - title: Health probe path
-      required: [bkst_app_health_probe]
-      properties:
         bkst_app_health_probe:
           title: Health probe path
           type: string
           description: Health probe path(e.g., '/').
-    - title: Memory requirements
-      required: [bkst_app_mem]
-      properties:
         bkst_app_mem:
           title: Memory requirements
           type: string
           description: How much memory to allow for the application as a maximum (e.g., '512Mi').
-    - title: Cpu limit
-      required: [bkst_app_cpu_limit]
-      properties:
         bkst_app_cpu_limit:
           title: CPU limit
           type: string
