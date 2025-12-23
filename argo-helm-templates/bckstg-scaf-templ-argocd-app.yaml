@@ -2,8 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: argocd-application-creator
-  title: Create ArgoCD Application Manifest
-  description: Creates a new ArgoCD Application YAML based on shared infra values.
+  title: Deploy New Application Manifests
+  description: Creates a new ArgoCD Application YAML based on shared infra values and helm chart for the application deployment passing the minimum required values.
   tags:
     - argocd
     - gitops
