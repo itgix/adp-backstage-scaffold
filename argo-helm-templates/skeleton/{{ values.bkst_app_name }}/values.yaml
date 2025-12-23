@@ -1,22 +1,35 @@
 global:
   # Variables that are used to build env vars for the specific environment
   vars:
-    ENV_NAME: "{{ parameters.bkst_app_stage }}"
+    ENV_NAME: "dev"
+    BASE_DB_URL: "Dummy variable"
+    BASE_DB_OPTS: "usessl=true&sslmode=require"
+    BASE_DB_USER: "postgres"
   # Env variables that are applied to every service
   env:
-    AWS_REGION: "{{ parameters.bkst_app_region }}"
+    AWS_REGION: "eu-central-1"
 
-{{ parameters.bkst_app_name }}:
+${{ parameters.bkst_app_name }}:
   enabled: true
-  appId: {{ parameters.bkst_app_name }}
+  appId: ${{ parameters.bkst_app_name }}
+  externalsecretEnv:
+    enabled: true
+    env:
+    - name: DATASOURCE_USERNAME
+      key: "Dummy variable" 
+      property: username
+    - name: SAMPLE_VAR
+      key: "Dummy variable"
+      property: password
   cm:
     enabled: true
     env:
-      SAMPLE_VAR: "sampleval"
+      APPLICATION_PORT: 8080
     dynamic:
       DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
       REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
       AWS_REGION: "{{ .Values.global.env.AWS_REGION }}"
+      AWS_DEFAULT_REGION: "{{ .Values.global.env.AWS_REGION }}"
 
   ingress:
     enabled: true
@@ -34,21 +47,45 @@ global:
       kubernetes.io/ingress.class: alb
     dynamic:
       enabled: true
-      nsPrefix: false
-      tls: true
-      cfgs:
-      - name: {{ parameters.bkst_app_name }}
-        paths:
-          - /
-        port: 80
+#      nsPrefix: false
+#      tls: true
+#      baseDomain: itgix.eu
+#      cfgs:
+#      - name: {{ parameters.bkst_app_name }}
+#        paths:
+#          - /
+#        port: 80
+
+  service:
+    enabled: true
+    external: false
+    ports:
+    - name: application
+      port: 80
+      protocol: TCP
+      targetPort: application
+
+  serviceAccount:
+    enabled: false
+    name: "aurora-tc-irsa"
+    annotations: {}
 
   deployment:
     enabled: true
+
+    serviceAccountName:
+      enabled: false
+      name: "aurora-tc-irsa"
+
     replicaCount: 1
+
     image:
-      ecr: "{{ parameters.bkst_app_imagereg }}"
-      repository: "{{ parameters.bkst_app_imagename}}"
-      tag: "{{ parameters.bkst_app_image_tag }}"
+      pullSecret:
+        enabled: false
+        secretName: "-"
+      ecr: "docker.io"
+      repository: "nginx"
+      tag: "1.27-alpine3.20-slim"
       pullPolicy: "Always"
 
     securityContext:
@@ -64,18 +101,18 @@ global:
     resources:
       enabled: true
       requests:
-        memory: {{ parameters.bkst_app_mem }}
+        memory: 512Mi
         cpu: 50m
       limits:
-        memory: {{ parameters.bkst_app_mem }}
-        cpu: {{ parameters.bkst_app_cpu_limit }}
+        memory: 1536Mi
+        cpu: 2
 
     probes:
       enabled: true
       content:
         startupProbe:
           httpGet:
-            path: {{ parameters.bkst_app_health_probe }}
+            path: ${{ parameters.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -84,7 +121,7 @@ global:
 
         livenessProbe:
           httpGet:
-            path: {{ parameters.bkst_app_health_probe }}
+            path: ${{ parameters.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -93,7 +130,7 @@ global:
 
         readinessProbe:
           httpGet:
-            path: {{ parameters.bkst_app_health_probe }}
+            path: ${{ parameters.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5

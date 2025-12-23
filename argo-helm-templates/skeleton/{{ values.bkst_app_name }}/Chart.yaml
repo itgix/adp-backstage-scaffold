@@ -8,5 +8,5 @@ dependencies:
 - name: universal
   version: ">=1.0.0"
   repository: file://../universalchart
-  condition: sample-component.enabled
-  alias: sample-component
+  condition: ${{ parameters.bkst_app_name }}.enabled
+  alias: ${{ parameters.bkst_app_name }}

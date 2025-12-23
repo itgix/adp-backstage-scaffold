@@ -1,44 +1,22 @@
 global:
   # Variables that are used to build env vars for the specific environment
   vars:
-    ENV_NAME: "dev"
-    BASE_DB_URL: "Dummy variable"
-    BASE_DB_OPTS: "usessl=true&sslmode=require"
-    BASE_DB_USER: "postgres"
-    BASE_DB_PASS: "nopass"
-
-    BASE_REDIS_HOST: "x-k8s-redis-headless"
-    BASE_REDIS_USER: "default"
-    BASE_REDIS_PASS: "mypasshere"
+    ENV_NAME: "${{ parameters.bkst_app_stage }}"
   # Env variables that are applied to every service
   env:
-    AWS_REGION: "eu-central-1"
+    AWS_REGION: "${{ parameters.bkst_app_region }}"
 
-{{ parameters.bkst_app_name }}:
+${{ parameters.bkst_app_name }}:
   enabled: true
-  appId: {{ parameters.bkst_app_name }}
-  externalsecretEnv:
-    enabled: true
-    env:
-    - name: DATASOURCE_USERNAME
-      key: "Dummy variable" 
-      property: username
-    - name: SAMPLE_VAR
-      key: "Dummy variable"
-      property: password
+  appId: ${{ parameters.bkst_app_name }}
   cm:
     enabled: true
     env:
-      APPLICATION_PORT: 8080
+      SAMPLE_VAR: "sampleval"
     dynamic:
       DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
       REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
       AWS_REGION: "{{ .Values.global.env.AWS_REGION }}"
-      AWS_DEFAULT_REGION: "{{ .Values.global.env.AWS_REGION }}"
-      REDIS_HOST: "{{ .Values.global.vars.BASE_REDIS_HOST }}"
-      REDIS_PORT: "6379"
-      REDIS_USE_SSL: "false"
-      REDIS_USERNAME: "{{ .Values.global.vars.BASE_REDIS_USER }}"
 
   ingress:
     enabled: true
@@ -56,45 +34,21 @@ global:
       kubernetes.io/ingress.class: alb
     dynamic:
       enabled: true
-#      nsPrefix: false
-#      tls: true
-#      baseDomain: itgix.eu
-#      cfgs:
-#      - name: {{ parameters.bkst_app_name }}
-#        paths:
-#          - /
-#        port: 80
-
-  service:
-    enabled: true
-    external: false
-    ports:
-    - name: application
-      port: 80
-      protocol: TCP
-      targetPort: application
-
-  serviceAccount:
-    enabled: false
-    name: "aurora-tc-irsa"
-    annotations: {}
+      nsPrefix: false
+      tls: true
+      cfgs:
+      - name: ${{ parameters.bkst_app_name }}
+        paths:
+          - /
+        port: 80
 
   deployment:
     enabled: true
-
-    serviceAccountName:
-      enabled: false
-      name: "aurora-tc-irsa"
-
     replicaCount: 1
-
     image:
-      pullSecret:
-        enabled: false
-        secretName: "-"
-      ecr: "docker.io"
-      repository: "nginx"
-      tag: "1.27-alpine3.20-slim"
+      ecr: "${{ parameters.bkst_app_imagereg }}"
+      repository: "${{ parameters.bkst_app_imagename}}"
+      tag: "${{ parameters.bkst_app_image_tag }}"
       pullPolicy: "Always"
 
     securityContext:
@@ -110,18 +64,18 @@ global:
     resources:
       enabled: true
       requests:
-        memory: 512Mi
+        memory: ${{ parameters.bkst_app_mem }}
         cpu: 50m
       limits:
-        memory: 1536Mi
-        cpu: 2
+        memory: ${{ parameters.bkst_app_mem }}
+        cpu: ${{ parameters.bkst_app_cpu_limit }}
 
     probes:
       enabled: true
       content:
         startupProbe:
           httpGet:
-            path: {{ parameters.bkst_app_health_probe }}
+            path: ${{ parameters.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -130,7 +84,7 @@ global:
 
         livenessProbe:
           httpGet:
-            path: {{ parameters.bkst_app_health_probe }}
+            path: ${{ parameters.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -139,7 +93,7 @@ global:
 
         readinessProbe:
           httpGet:
-            path: {{ parameters.bkst_app_health_probe }}
+            path: ${{ parameters.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
