@@ -94,5 +94,5 @@ spec:
 
   output:
     links:
-      - title: Open Pull Request
+      - title: Review the Pull Request and merge to apply changes
         url: ${{ steps['create-pull-request'].output.remoteUrl }}
