@@ -71,6 +71,7 @@ spec:
           bkst_app_name: ${{ parameters.bkst_app_name }}
           bkst_app_stage: ${{ parameters.bkst_app_stage }}
           bkst_app_region: ${{ parameters.bkst_app_region }}
+          bkst_app_imagereg: ${{ parameters.bkst_app_imagereg }}
           bkst_app_imagename: ${{ parameters.bkst_app_imagename }}
           bkst_app_image_tag: ${{ parameters.bkst_app_image_tag }}
           bkst_app_health_probe: ${{ parameters.bkst_app_health_probe }}
