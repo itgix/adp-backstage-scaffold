@@ -14,13 +14,13 @@ spec:
 
   parameters:
     - title: Application Naming
-      required: [bkst_app_name,bkst_stage,bkst_app_region]
+      required: [bkst_app_name,bkst_app_stage,bkst_app_region]
       properties:
         bkst_app_name:
           title: New Application Name
           type: string
           description: Unique name for the application (e.g., 'payroll-service').
-        bkst_stage:
+        bkst_app_stage:
           title: On which stage to deploy
           type: string
           description: Stage (e.g., 'dev' or 'staging' or 'prod').
@@ -69,6 +69,10 @@ spec:
         values:
           # Pass only the necessary variables to the templating engine
           bkst_app_name: ${{ parameters.bkst_app_name }}
+          bkst_app_stage: ${{ parameters.bkst_app_stage }}
+          bkst_app_region: ${{ parameters.bkst_app_region }}
+          bkst_app_imagename: ${{ parameters.bkst_app_imagename }}
+          bkst_app_image_tag: ${{ parameters.bkst_app_image_tag }}
 
 # This will actually create the repo
 #    - id: publish-manifest
