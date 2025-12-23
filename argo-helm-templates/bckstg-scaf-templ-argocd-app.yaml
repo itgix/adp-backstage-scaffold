@@ -78,14 +78,6 @@ spec:
           bkst_app_cpu_limit: ${{ parameters.bkst_app_cpu_limit }}
           bkst_app_mem: ${{ parameters.bkst_app_mem }}
 
-    - id: debug-list
-      action: run:local
-      input:
-        script: |
-          set -e
-          echo "== find helm/applications/templates =="
-          find helm/applications/templates -maxdepth 1 -type f -print
-
     - id: rename-app-dir
       name: Rename the directories with the proper app name region and stage
       action: fs:rename
@@ -97,7 +89,7 @@ spec:
             to: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}
           - from: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/REGION
             to: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/${{ parameters.bkst_app_region }}
-          - from: helm/applications/templates/argocd-application-templ.yaml
+          - from: helm/applications/templates/argocd-application-templ.yaml.hbs
             to: helm/applications/templates/application-${{ parameters.bkst_app_name }}.yaml
 
 # This will actually create the repo
