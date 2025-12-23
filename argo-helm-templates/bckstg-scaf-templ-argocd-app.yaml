@@ -79,6 +79,7 @@ spec:
           bkst_app_mem: ${{ parameters.bkst_app_mem }}
 
     - id: rename-app-dir
+      name: Rename the directories with the proper app name region and stage
       action: fs:rename
       input:
         files:
