@@ -78,6 +78,14 @@ spec:
           bkst_app_cpu_limit: ${{ parameters.bkst_app_cpu_limit }}
           bkst_app_mem: ${{ parameters.bkst_app_mem }}
 
+    - id: debug-list
+      action: run:local
+      input:
+        script: |
+          set -e
+          echo "== find helm/applications/templates =="
+          find helm/applications/templates -maxdepth 1 -type f -print
+
     - id: rename-app-dir
       name: Rename the directories with the proper app name region and stage
       action: fs:rename
