@@ -73,6 +73,9 @@ spec:
           bkst_app_region: ${{ parameters.bkst_app_region }}
           bkst_app_imagename: ${{ parameters.bkst_app_imagename }}
           bkst_app_image_tag: ${{ parameters.bkst_app_image_tag }}
+          bkst_app_health_probe: ${{ parameters.bkst_app_health_probe }}
+          bkst_app_cpu_limit: ${{ parameters.bkst_app_cpu_limit }}
+          bkst_app_mem: ${{ parameters.bkst_app_mem }}
 
 # This will actually create the repo
 #    - id: publish-manifest
