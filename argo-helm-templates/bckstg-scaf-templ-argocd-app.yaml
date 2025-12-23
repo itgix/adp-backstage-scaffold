@@ -89,6 +89,8 @@ spec:
             to: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}
           - from: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/REGION
             to: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/${{ parameters.bkst_app_region }}
+          - from: helm/applications/templates/argocd-application-templ.yaml
+            to: helm/applications/templates/application-${{ parameters.bkst_app_name }}.yaml
 
 # This will actually create the repo
 #    - id: publish-manifest
