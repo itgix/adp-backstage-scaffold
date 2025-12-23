@@ -82,12 +82,12 @@ spec:
       action: fs:rename
       input:
         files:
-          - from: helm/applications/APP_NAME
-            to: helm/applications/${{ parameters.bkst_app_name }}
-          - from: helm/applications/${{ parameters.bkst_app_name }}/values/STAGE
-            to: helm/applications/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}
-          - from: helm/applications/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/REGION
-            to: helm/applications/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/${{ parameters.bkst_app_region }}
+          - from: helm/APP_NAME
+            to: helm/${{ parameters.bkst_app_name }}
+          - from: helm/${{ parameters.bkst_app_name }}/values/STAGE
+            to: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}
+          - from: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/REGION
+            to: helm/${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/${{ parameters.bkst_app_region }}
 
 # This will actually create the repo
 #    - id: publish-manifest
