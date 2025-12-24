@@ -22,7 +22,7 @@ spec:
         global:
           vars:
             BASE_DB_URL: {{ index .Values "infra-services" "rds_cluster_endpoint" }}
-        tokenization-component:
+        ${{ values.bkst_app_name }}:
           externalsecretEnv:
             env:
             - name: DATASOURCE_USERNAME
