@@ -33,13 +33,13 @@ spec:
               property: password
           ingress:
             annotations:
-              external-dns.alpha.kubernetes.io/hostname: {{ parameters.bkst_app_url_prefix }}-{{ index .Values "infra-services" "environment" }}.{{ index .Values "infra-services" "dns_main_domain" }}.
+              external-dns.alpha.kubernetes.io/hostname: ${{ values.bkst_app_url_prefix }}-{{ index .Values "infra-services" "environment" }}.{{ index .Values "infra-services" "dns_main_domain" }}.
             dynamic:
               enabled: true
               tls: false
               baseDomain: {{ index .Values "infra-services" "dns_main_domain" }}
               cfgs:
-              - name: {{ parameters.bkst_app_name }}
+              - name: ${{ values.bkst_app_name }}
                 paths:
                   - /
                 port: 80
