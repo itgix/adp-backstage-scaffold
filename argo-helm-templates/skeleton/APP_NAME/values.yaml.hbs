@@ -9,9 +9,9 @@ global:
   env:
     AWS_REGION: "eu-central-1"
 
-${{ parameters.bkst_app_name }}:
+${{ values.bkst_app_name }}:
   enabled: true
-  appId: ${{ parameters.bkst_app_name }}
+  appId: ${{ values.bkst_app_name }}
   externalsecretEnv:
     enabled: true
     env:
@@ -51,7 +51,7 @@ ${{ parameters.bkst_app_name }}:
 #      tls: true
 #      baseDomain: itgix.eu
 #      cfgs:
-#      - name: {{ parameters.bkst_app_name }}
+#      - name: {{ values.bkst_app_name }}
 #        paths:
 #          - /
 #        port: 80
