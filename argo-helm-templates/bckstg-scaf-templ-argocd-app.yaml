@@ -58,7 +58,17 @@ spec:
           title: CPU limit
           type: string
           description: How many CPU cores to limit the application as a maximum (e.g., '2').
-
+    - title: Fill in some steps
+      properties:
+        name:
+          title: Simple text input
+          type: string
+          description: Description about input
+          maxLength: 8
+          pattern: '^([a-zA-Z][a-zA-Z0-9]*)(-[a-zA-Z0-9]+)*$'
+      errorMessage:
+        properties:
+          name: 'Invalid format. Use letters/numbers only, start with a letter, max 8 characters.'
 
 
   steps:
