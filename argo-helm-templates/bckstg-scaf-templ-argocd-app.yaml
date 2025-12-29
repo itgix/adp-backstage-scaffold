@@ -20,7 +20,7 @@ spec:
           title: New Application Name
           type: string
           pattern: '[a-z0-9]([-a-z0-9][a-z0-9])?([a-z0-9]([-a-z0-9][a-z0-9])?)*'
-          maxLenght: 16
+          maxLength: 16
           description: Unique name for the application (e.g., 'payroll-service').
           ui:help: "Hint: a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character"
         bkst_app_stage:
