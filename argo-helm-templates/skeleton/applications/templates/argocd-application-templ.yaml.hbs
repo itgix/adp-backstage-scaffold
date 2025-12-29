@@ -1,4 +1,4 @@
-{{- if index .Values "infra-services" "app_${{ values.bkst_app_name }}_enabled" }}
+{{- if ne (index .Values "infra-services" "app_${{ values.bkst_app_name }}_enabled") false }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
