@@ -125,11 +125,11 @@ spec:
 
     # STEP 2: Create a Pull Request (This pushes a new branch and opens the PR)
     - id: create-pull-request
-      name: Create Feature Branch and Pull Request in repo ${{ environment.parameters.repoOwner }} ${{ environment.parameters.repoName }}'
+      name: Create Feature Branch and Pull Request in repo ${{ environment.secrets.repoOwner }} ${{ environment.secrets.repoName }}'
       # This action is designed specifically for feature branching and PR creation
       action: publish:github:pull-request
       input:
-        repoUrl: 'github.com?owner=${{ environment.parameters.repoOwner }}&repo=${{ environment.parameters.repoName }}'
+        repoUrl: 'github.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
         #repoUrl: 'github.com?owner=itgix&repo=adp-demo-client-test'
         branchName: 'feat/new-app-${{ parameters.bkst_app_name }}'
         title: 'New App: ${{ parameters.bkst_app_name }} Scaffolded'
