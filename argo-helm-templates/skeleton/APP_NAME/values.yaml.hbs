@@ -1,6 +1,6 @@
 global:
   # Variables that are used to build env vars for the specific environment
-  # Repo to be used ${{ environment.parameters.repoName }}  , with owner ${{ environment.parameters.repoOwner }} , aws region ${{ environment.parameters.region }}
+  # Repo to be used ${{ environment.secrets.repoName }}  , with owner ${{ environment.secrets.repoOwner }} , aws region ${{ environment.secrets.region }}
   vars:
     ENV_NAME: "dev"
     BASE_DB_URL: "Dummy variable"
