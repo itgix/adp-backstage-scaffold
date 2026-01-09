@@ -129,8 +129,8 @@ spec:
       # This action is designed specifically for feature branching and PR creation
       action: publish:github:pull-request
       input:
-        #repoUrl: 'github.com?owner=${{ environment.parameters.repoOwner }}&repo=${{ environment.parameters.repoName }}'
-        repoUrl: 'github.com?owner=itgix&repo=adp-demo-client-test'
+        repoUrl: 'github.com?owner=${{ environment.parameters.repoOwner }}&repo=${{ environment.parameters.repoName }}'
+        #repoUrl: 'github.com?owner=itgix&repo=adp-demo-client-test'
         branchName: 'feat/new-app-${{ parameters.bkst_app_name }}'
         title: 'New App: ${{ parameters.bkst_app_name }} Scaffolded'
         sourcePath: .
