@@ -125,7 +125,7 @@ spec:
 
     # STEP 2: Create a Pull Request (This pushes a new branch and opens the PR)
     - id: create-pull-request
-      name: Create Feature Branch and Pull Request in repo ${{ environment.secrets.repoOwner }} ${{ environment.secrets.repoName }}
+      name: Create Feature Branch and Pull Request
       # This action is designed specifically for feature branching and PR creation
       action: publish:github:pull-request
       input:
