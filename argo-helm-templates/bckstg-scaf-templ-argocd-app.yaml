@@ -60,6 +60,14 @@ spec:
           type: string
           description: How many CPU cores to limit the application as a maximum (e.g., '2').
           pattern: '^[0-9]+$'
+    - title: Hidden defaults
+      properties:
+        bkst_repoName:
+          type: string
+          default: ${{ config.scaffolder.templateDefaults.repoName }}
+        bkst_repoOwner:
+          type: string
+          default: ${{ config.scaffolder.templateDefaults.repoOwner }}
 
 
 
