@@ -31,6 +31,7 @@ spec:
           title: On which region will the app run
           type: string
           description: The cloud region (e.g., 'eu-west-2').
+          pattern: '^[a-z]{2}-[a-z]+-[0-9]+$'
     - title: Container image and resources
       required: [bkst_app_imagename,bkst_app_image_tag,bkst_app_mem,bkst_app_cpu_limit]
       properties:
@@ -42,25 +43,35 @@ spec:
           title: Container image name
           type: string
           description: The address of the container registry containing the image (e.g., 'myapp').
+          pattern: '^[a-z0-9]+([._-][a-z0-9]+)*$'
+          maxLength: 32
+          ui:help: "Lowercase letters, numbers, '-', '_', or '.' allowed. Must start and end with alphanumeric character"
         bkst_app_image_tag:
           title: Container image tag
           type: string
           description: The tag of the container image(e.g., 'v1.0.0').
+          pattern: '^[a-zA-Z0-9_.-]+$'
+          maxLength: 32
+          ui:help: "Alphanumeric characters, '.', '-', or '_' allowed"
         bkst_app_health_probe:
           title: Health probe path
           type: string
           description: Health probe path(e.g., '/').
+          pattern: '^/.*$'
+          maxLength: 128
+          ui:help: "Must start with a '/'"
         bkst_app_mem:
           title: Memory requirements
           type: string
           description: How much memory to allow for the application as a maximum (e.g., '512Mi').
           pattern: '^[1-9][0-9]*(Mi|Gi)$'
+          ui:help: "Specify memory as a number followed by Mi or Gi"
         bkst_app_cpu_limit:
           title: CPU limit
           type: string
           description: How many CPU cores to limit the application as a maximum (e.g., '2').
-          pattern: '^[0-9]+$'
-
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          ui:help: "Number of CPU cores. Specify CPU as a whole number or decimal"
 
   steps:
     - id: fetch-base
