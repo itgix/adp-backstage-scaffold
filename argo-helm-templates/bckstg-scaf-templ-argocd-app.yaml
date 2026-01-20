@@ -26,7 +26,6 @@ spec:
         bkst_app_stage:
           title: On which stage to deploy
           type: string
-          enum: [dev, test, staging, prod]
           description: Stage (e.g., 'dev' or 'staging' or 'prod').
         bkst_app_region:
           title: On which region will the app run
@@ -65,7 +64,7 @@ spec:
           title: Memory requirements
           type: string
           description: How much memory to allow for the application as a maximum (e.g., '512Mi').
-          pattern: '^[0-9]+(Mi|Gi)$'
+          pattern: '^[1-9][0-9]*(Mi|Gi)$'
           ui:help: "Specify memory as a number followed by Mi or Gi"
         bkst_app_cpu_limit:
           title: CPU limit
