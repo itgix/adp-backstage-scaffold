@@ -1,9 +1,9 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: argocd-application-creator
+  name: argocd-application-creator-gitlab
   title: Deploy New Application Manifests using GitLab
-  description: Creates a new ArgoCD Application YAML based on shared infra values and helm chart for the application deployment passing the minimum required values.
+  description: Creates a new ArgoCD Application YAML based on shared infra values and helm chart for the application deployment passing the minimum required values. Opens a merge request in Gitlab.
   tags:
     - argocd
     - gitops
