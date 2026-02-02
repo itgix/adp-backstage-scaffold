@@ -2,7 +2,7 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: argocd-application-creator
-  title: Deploy New Application Manifests
+  title: Deploy New Application Manifests using GitLab
   description: Creates a new ArgoCD Application YAML based on shared infra values and helm chart for the application deployment passing the minimum required values.
   tags:
     - argocd
@@ -14,7 +14,7 @@ spec:
 
   parameters:
     - title: Application Naming
-      required: [bkst_app_name,bkst_app_stage,bkst_app_region]
+      required: [bkst_app_name, bkst_app_stage, bkst_app_region]
       properties:
         bkst_app_name:
           title: New Application Name
@@ -31,13 +31,14 @@ spec:
           title: On which region will the app run
           type: string
           description: The cloud region (e.g., 'eu-west-2').
+
     - title: Container image and resources
-      required: [bkst_app_imagename,bkst_app_image_tag,bkst_app_mem,bkst_app_cpu_limit]
+      required: [bkst_app_imagename, bkst_app_image_tag, bkst_app_mem, bkst_app_cpu_limit]
       properties:
         bkst_app_imagereg:
           title: Container registry
           type: string
-          description: The address of the container registry containing the image (e.g., 'docker.io/').  It should end with a "/" or it can be omitted if it's docker.io
+          description: The address of the container registry containing the image (e.g., 'docker.io/'). It should end with a "/" or it can be omitted if it's docker.io
         bkst_app_imagename:
           title: Container image name
           type: string
@@ -45,11 +46,11 @@ spec:
         bkst_app_image_tag:
           title: Container image tag
           type: string
-          description: The tag of the container image(e.g., 'v1.0.0').
+          description: The tag of the container image (e.g., 'v1.0.0').
         bkst_app_health_probe:
           title: Health probe path
           type: string
-          description: Health probe path(e.g., '/').
+          description: Health probe path (e.g., '/').
         bkst_app_mem:
           title: Memory requirements
           type: string
@@ -61,14 +62,12 @@ spec:
           description: How many CPU cores to limit the application as a maximum (e.g., '2').
           pattern: '^[0-9]+$'
 
-
   steps:
     - id: fetch-base
       name: Fetch and Render Template
       action: fetch:template
       input:
         url: ./skeleton/
-        # Assuming you put your ArgoCD manifest into a 'skeleton' folder
         targetPath: ./helm/
         values:
           # Pass only the necessary variables to the templating engine
@@ -113,31 +112,17 @@ spec:
         - from: helm/APP_NAME
           to: helm/${{ parameters.bkst_app_name }}
 
-# This will actually create the repo
-#    - id: publish-manifest
-#      name: Publish to GitOps Repository
-#      action: publish:github # Replace with 'publish:github' or publish:gitlab if needed
-#      input:
-#        repoUrl: github.com?owner=itgix&repo=adp-demo-client-test # Replace with dynamic parameter
-#        #branch: new-app/${{ parameters.bkst_app_name }}
-#        sourcePath: . # Publish the generated file from the workspace
-#        #commitMessage: 'feat: Add ArgoCD Application for ${{ parameters.bkst_app_name }}'
-
-    # STEP 2: Create a Pull Request (This pushes a new branch and opens the PR)
-    - id: create-pull-request
-      name: Create Feature Branch and Pull Request
-      # This action is designed specifically for feature branching and PR creation
-      action: publish:github:pull-request
-      # action: publish:gitlab:merge-request
+    - id: create-merge-request
+      name: Create Feature Branch and Merge Request
+      action: publish:gitlab:merge-request
       input:
-        repoUrl: 'github.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
-        #repoUrl: 'github.com?owner=itgix&repo=adp-demo-client-test'
+        repoUrl: 'gitlab.itgix.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
         branchName: 'feat/new-app-${{ parameters.bkst_app_name }}'
         title: 'New App: ${{ parameters.bkst_app_name }} Scaffolded'
         sourcePath: .
-        description: 'This PR adds the initial configuration for the new application ${{ parameters.bkst_app_name }}.'
+        description: 'This MR adds the initial configuration for the new application ${{ parameters.bkst_app_name }}.'
 
   output:
     links:
-      - title: Review the Pull Request and merge to apply changes
-        url: ${{ steps['create-pull-request'].output.remoteUrl }}
+      - title: Review the Merge Request and merge to apply changes
+        url: ${{ steps['create-merge-request'].output.remoteUrl }}
