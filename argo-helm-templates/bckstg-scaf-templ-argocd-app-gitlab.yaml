@@ -118,6 +118,7 @@ spec:
       input:
         repoUrl: 'gitlab.itgix.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
         branchName: 'feat/new-app-${{ parameters.bkst_app_name }}'
+        targetBranchName: 'main'
         title: 'New App: ${{ parameters.bkst_app_name }} Scaffolded'
         sourcePath: .
         description: 'This MR adds the initial configuration for the new application ${{ parameters.bkst_app_name }}.'
