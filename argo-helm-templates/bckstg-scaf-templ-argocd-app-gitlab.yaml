@@ -123,7 +123,13 @@ spec:
         sourcePath: .
         description: 'This MR adds the initial configuration for the new application ${{ parameters.bkst_app_name }}.'
 
+    - id: debug-mr-output
+      name: Debug MR output
+      action: debug:log
+      input:
+        message: ${{ steps['create-merge-request'].output | dump }}
+
   output:
     links:
       - title: Review the Merge Request and merge to apply changes
-        url: ${{ steps['create-merge-request'].output.remoteUrl }}
+        url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}
