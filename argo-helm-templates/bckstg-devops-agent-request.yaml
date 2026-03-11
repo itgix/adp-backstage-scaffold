@@ -1,0 +1,126 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: devops-agent-request
+  title: Request Kubernetes Configuration Changes
+  description: Use AI to generate Kubernetes manifest or Helm values changes via the DevOps Agent
+  tags:
+    - kubernetes
+    - helm
+    - gitops
+    - ai-assisted
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Application Information
+      required:
+        - appName
+        - userRequest
+      properties:
+        appName:
+          title: Application Name
+          type: string
+          description: Name of the application in the GitOps repository
+          ui:autofocus: true
+          ui:help: 'Example: testapp2, sample-app'
+
+        userRequest:
+          title: What do you want to change?
+          type: string
+          description: Describe the changes you need in natural language
+          ui:widget: textarea
+          ui:options:
+            rows: 5
+          ui:help: 'Example: Add health probes on port 8080 with path /actuator/health'
+
+        additionalContext:
+          title: Additional Context (Optional)
+          type: string
+          description: Any additional information or constraints
+          ui:widget: textarea
+          ui:options:
+            rows: 3
+
+    - title: GitOps Configuration
+      required:
+        - createMR
+      properties:
+        createMR:
+          title: Create Merge Request?
+          type: boolean
+          default: true
+          description: If false, only generate and validate changes without creating an MR
+
+        targetBranch:
+          title: Target Branch
+          type: string
+          default: main
+          description: Base branch for the merge request
+          ui:help: 'The branch your changes will be merged into'
+
+        targetFiles:
+          title: Target Files (Optional)
+          type: array
+          description: Specific files to modify (leave empty to let AI decide)
+          items:
+            type: string
+          ui:help: 'Example: helm/testapp2/values/dev/eu-west-1/values.yaml'
+
+  steps:
+    - id: call-devops-agent
+      name: Generate Changes with AI
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /proxy/devops-agent/api/v1/generate
+        headers:
+          content-type: application/json
+        body:
+          user_request: ${{ parameters.userRequest }}
+          app_name: ${{ parameters.appName }}
+          additional_context: ${{ parameters.additionalContext }}
+          target_files: ${{ parameters.targetFiles }}
+          create_mr: ${{ parameters.createMR }}
+          mr_target_branch: ${{ parameters.targetBranch }}
+
+    - id: parse-response
+      name: Parse Agent Response
+      action: debug:log
+      input:
+        message: |
+          DevOps Agent Response:
+          Success: ${{ steps['call-devops-agent'].output.body.success }}
+          Changes: ${{ steps['call-devops-agent'].output.body.changes.length }} file(s) modified
+          MR URL: ${{ steps['call-devops-agent'].output.body.merge_request.url }}
+
+  output:
+    links:
+      - title: View Merge Request
+        url: ${{ steps['call-devops-agent'].output.body.merge_request.url }}
+        icon: gitlab
+      - title: View in GitOps Repository
+        url: https://gitlab.itgix.com/rnd/app-platform/gitops-repo
+        icon: catalog
+
+    text:
+      - title: Explanation
+        content: ${{ steps['call-devops-agent'].output.body.explanation }}
+
+      - title: Changes Summary
+        content: |
+          **Files Modified:** ${{ steps['call-devops-agent'].output.body.changes.length }}
+
+          ${{ steps['call-devops-agent'].output.body.changes | map(c => '- ' + c.file_path + ' (' + c.change_type + ')') | join('\n') }}
+
+      - title: Warnings
+        content: |
+          ${{ steps['call-devops-agent'].output.body.warnings | map(w => '⚠️ ' + w) | join('\n') }}
+
+      - title: Validation Results
+        content: |
+          **Valid:** ${{ steps['call-devops-agent'].output.body.validation_result.is_valid ? '✅ Yes' : '❌ No' }}
+
+          **Errors:** ${{ steps['call-devops-agent'].output.body.validation_result.errors.length }}
+          **Warnings:** ${{ steps['call-devops-agent'].output.body.validation_result.warnings.length }}
