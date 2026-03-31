@@ -36,7 +36,7 @@ spec:
           ui:help: 'Example: Add health probes on port 8080 with path /actuator/health'
 
         additionalContext:
-          title: Additional Context (Optional)
+          title: Environment and other Additional Context (Optional)
           type: string
           description: Any additional information or constraints
           ui:widget: textarea
@@ -80,36 +80,38 @@ spec:
         body:
           user_request: ${{ parameters.userRequest }}
           app_name: ${{ parameters.appName }}
-          additional_context: ${{ parameters.additionalContext }}
+          additional_context: "Environment: ${{ parameters.additionalContext }}"
           target_files: ${{ parameters.targetFiles }}
           create_mr: ${{ parameters.createMR }}
           mr_target_branch: ${{ parameters.targetBranch }}
 
+    - id: log-response
+      name: Log Agent Response
+      action: debug:log
+      input:
+        message: ${{ steps['call-devops-agent'].output.body | dump }}
 
   output:
     links:
       - title: View Merge Request
-        url: ${{ steps['call-devops-agent'].output.merge_request.url }}
+        url: ${{ steps['call-devops-agent'].output.body.merge_request.url }}
         icon: gitlab
-      - title: View in GitOps Repository
-        url: https://gitlab.itgix.com/rnd/app-platform/gitops-repo
-        icon: catalog
 
     text:
       - title: AI Explanation
-        content: ${{ steps['call-devops-agent'].output.explanation }}
+        content: ${{ steps['call-devops-agent'].output.body.explanation }}
 
       - title: Generation Status
         content: |
-          Success: ${{ steps['call-devops-agent'].output.success }}
-          Files Modified: ${{ steps['call-devops-agent'].output.changes.length }}
-          Error: ${{ steps['call-devops-agent'].output.error }}
+          Success: ${{ steps['call-devops-agent'].output.body.success }}
+          Files Modified: ${{ steps['call-devops-agent'].output.body.changes.length }}
+          Error: ${{ steps['call-devops-agent'].output.body.error }}
 
       - title: Changes
-        content: ${{ steps['call-devops-agent'].output.changes | dump }}
+        content: ${{ steps['call-devops-agent'].output.body.changes | dump }}
 
       - title: Validation Result
-        content: ${{ steps['call-devops-agent'].output.validation_result | dump }}
+        content: ${{ steps['call-devops-agent'].output.body.validation_result | dump }}
 
       - title: Warnings
-        content: ${{ steps['call-devops-agent'].output.warnings | dump }}
+        content: ${{ steps['call-devops-agent'].output.body.warnings | dump }}
