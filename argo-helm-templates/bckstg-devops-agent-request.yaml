@@ -47,6 +47,12 @@ spec:
       required:
         - createMR
       properties:
+        refreshIndex:
+          title: Refresh Vector Database Index
+          type: boolean
+          default: false
+          description: Refresh the repository index in Qdrant before generating manifests
+
         createMR:
           title: Create Merge Request?
           type: boolean
@@ -69,6 +75,16 @@ spec:
           ui:help: 'Example: helm/testapp2/values/dev/eu-west-1/values.yaml'
 
   steps:
+    - id: refresh-index
+      name: Refresh Vector Database Index
+      action: http:backstage:request
+      if: ${{ parameters.refreshIndex }}
+      input:
+        method: POST
+        path: /proxy/devops-agent/api/v1/index/refresh?force=true
+        headers:
+          content-type: application/json
+
     - id: call-devops-agent
       name: Generate Changes with AI
       action: http:backstage:request
