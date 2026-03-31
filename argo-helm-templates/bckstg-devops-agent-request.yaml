@@ -85,54 +85,31 @@ spec:
           create_mr: ${{ parameters.createMR }}
           mr_target_branch: ${{ parameters.targetBranch }}
 
-    - id: parse-response
-      name: Parse Agent Response
-      action: debug:log
-      input:
-        message: |
-          ========== DevOps Agent Response ==========
-
-          Status: ${{ steps['call-devops-agent'].output.success ? 'SUCCESS' : 'FAILED' }}
-
-          AI Explanation:
-          ${{ steps['call-devops-agent'].output.explanation }}
-
-          Files Modified: ${{ steps['call-devops-agent'].output.changes.length }}
-          ${{ steps['call-devops-agent'].output.changes | map(c => '  - ' + c.file_path + ' (' + c.change_type + ')') | join('\n') }}
-
-          Warnings: ${{ steps['call-devops-agent'].output.warnings.length }}
-          ${{ steps['call-devops-agent'].output.warnings | map(w => '  - ' + w) | join('\n') }}
-
-          Validation:
-          - Valid: ${{ steps['call-devops-agent'].output.validation_result.is_valid }}
-          - Errors: ${{ steps['call-devops-agent'].output.validation_result.errors.length }}
-          - Warnings: ${{ steps['call-devops-agent'].output.validation_result.warnings.length }}
-
-          Merge Request:
-          ${{ steps['call-devops-agent'].output.merge_request ? '  URL: ' + steps['call-devops-agent'].output.merge_request.url : '  Not created' }}
-          ${{ steps['call-devops-agent'].output.merge_request ? '  IID: ' + steps['call-devops-agent'].output.merge_request.iid : '' }}
-          ${{ steps['call-devops-agent'].output.merge_request ? '  Title: ' + steps['call-devops-agent'].output.merge_request.title : '' }}
-
-          Error: ${{ steps['call-devops-agent'].output.error ? steps['call-devops-agent'].output.error : 'None' }}
-
-          ========================================
 
   output:
     links:
       - title: View Merge Request
         url: ${{ steps['call-devops-agent'].output.merge_request.url }}
         icon: gitlab
+      - title: View in GitOps Repository
+        url: https://gitlab.itgix.com/rnd/app-platform/gitops-repo
+        icon: catalog
 
     text:
-      - title: Generation Result
+      - title: AI Explanation
+        content: ${{ steps['call-devops-agent'].output.explanation }}
+
+      - title: Generation Status
         content: |
-          Status: ${{ steps['call-devops-agent'].output.success ? 'SUCCESS' : 'FAILED' }}
-
-          ${{ steps['call-devops-agent'].output.explanation }}
-
+          Success: ${{ steps['call-devops-agent'].output.success }}
           Files Modified: ${{ steps['call-devops-agent'].output.changes.length }}
+          Error: ${{ steps['call-devops-agent'].output.error }}
 
-          Validation: ${{ steps['call-devops-agent'].output.validation_result.is_valid ? 'PASSED' : 'FAILED' }}
+      - title: Changes
+        content: ${{ steps['call-devops-agent'].output.changes | dump }}
 
-          Note: See the logs for full details on changes, warnings, and validation results.
+      - title: Validation Result
+        content: ${{ steps['call-devops-agent'].output.validation_result | dump }}
 
+      - title: Warnings
+        content: ${{ steps['call-devops-agent'].output.warnings | dump }}
