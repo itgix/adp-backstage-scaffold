@@ -1,20 +1,56 @@
+# Generated values for: ${{ values.bkst_app_name }}
+# Stage: ${{ values.bkst_app_stage }}
+# Region: ${{ values.bkst_app_region }}
+
 global:
   vars:
     ENV_NAME: "${{ values.bkst_app_stage }}"
   env:
-    AREGION: "${{ values.bkst_app_region }}"
+    AWS_REGION: "${{ values.bkst_app_region }}"
 
 ${{ values.bkst_app_name }}:
   enabled: true
   appId: ${{ values.bkst_app_name }}
+
+  {%- if values.envVariables and values.envVariables | length > 0 %}
+  # ConfigMap with regular environment variables
   cm:
     enabled: true
     env:
-      SAMPLE_VAR: "sampleval"
+    {%- for var in values.envVariables %}
+      {{ var.varName }}: "${{ var.varValue }}"
+    {%- endfor %}
     dynamic:
       DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
-      REGION_NAME: "{{ .Values.global.env.REGION }}"
-      REGION: "{{ .Values.global.env.REGION }}"
+      REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
+      AWS_REGION: "{{ .Values.global.env.AWS_REGION }}"
+      AWS_DEFAULT_REGION: "{{ .Values.global.env.AWS_REGION }}"
+  {%- else %}
+  cm:
+    enabled: true
+    env: {}
+    dynamic:
+      DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
+      REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
+      AWS_REGION: "{{ .Values.global.env.AWS_REGION }}"
+      AWS_DEFAULT_REGION: "{{ .Values.global.env.AWS_REGION }}"
+  {%- endif %}
+
+  {%- if values.secretVariables and values.secretVariables | length > 0 %}
+  # External Secrets Configuration for sensitive data
+  externalsecretEnv:
+    enabled: true
+    env:
+    {%- for secret in values.secretVariables %}
+      - name: {{ secret.secretVarName }}
+        key: "{{ secret.secretStoreKey }}"
+        property: "{{ secret.secretProperty }}"
+    {%- endfor %}
+  {%- else %}
+  externalsecretEnv:
+    enabled: false
+    env: []
+  {%- endif %}
 
   ingress:
     enabled: true
@@ -30,12 +66,21 @@ ${{ values.bkst_app_name }}:
           - /
         port: 80
 
+  service:
+    enabled: true
+    external: false
+    ports:
+    - name: application
+      port: 80
+      protocol: TCP
+      targetPort: application
+
   deployment:
     enabled: true
     replicaCount: 1
     image:
-      ecr: "${{ values.bkst_app_imagereg }}"
-      repository: "${{ values.bkst_app_imagename}}"
+      ecr: "docker.io"
+      repository: "${{ values.bkst_app_imagename }}"
       tag: "${{ values.bkst_app_image_tag }}"
       pullPolicy: "Always"
 
