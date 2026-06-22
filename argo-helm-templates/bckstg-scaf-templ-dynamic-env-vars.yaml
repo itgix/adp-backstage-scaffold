@@ -215,7 +215,7 @@ spec:
           Regular env variables: ${{ parameters.envVariables | length }}
           Secret env variables: ${{ parameters.secretVariables | length }}
 
-    # Fetch the base skeleton (reuses existing Helm chart structure)
+    # Fetch the base skeleton (creates Chart.yaml, base values.yaml)
     - id: fetch-skeleton
       name: Fetch Application Skeleton
       action: fetch:template
@@ -226,61 +226,154 @@ spec:
           bkst_app_name: ${{ parameters.bkst_app_name }}
           bkst_app_stage: ${{ parameters.bkst_app_stage }}
           bkst_app_region: ${{ parameters.bkst_app_region }}
-          bkst_app_imagename: ${{ parameters.bkst_app_imagename }}
-          bkst_app_image_tag: ${{ parameters.bkst_app_image_tag }}
-          bkst_app_health_probe: ${{ parameters.bkst_app_health_probe }}
-          bkst_app_mem: ${{ parameters.bkst_app_mem }}
-          bkst_app_cpu_limit: ${{ parameters.bkst_app_cpu_limit }}
 
-    # Create environment variables values file
-    - id: create-env-values-file
-      name: Create Environment Variables Configuration
+    # Update values file with generated environment variables
+    - id: create-stage-region-values-file
+      name: Create Stage/Region Values with Environment Variables
       action: fs:write
       input:
-        path: ./${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}-env-vars.yaml
+        path: ./${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}/${{ parameters.bkst_app_region }}/values.yaml
         content: |
-          # Generated regular environment variables for: ${{ parameters.bkst_app_name }}
+          # Generated values for: ${{ parameters.bkst_app_name }}
           # Stage: ${{ parameters.bkst_app_stage }}
           # Region: ${{ parameters.bkst_app_region }}
           # Auto-generated on: $(date)
 
-          {%- if parameters.envVariables and parameters.envVariables | length > 0 %}
-          # Regular environment variables (stored in ConfigMap)
-          env:
-          {%- for var in parameters.envVariables %}
-            {{ var.varName }}: "${{ var.varValue }}"
-          {%- endfor %}
-          {%- else %}
-          # No regular environment variables defined
-          env: {}
-          {%- endif %}
+          global:
+            vars:
+              ENV_NAME: "${{ parameters.bkst_app_stage }}"
+            env:
+              AWS_REGION: "${{ parameters.bkst_app_region }}"
 
-    # Create secret environment variables values file
-    - id: create-secrets-values-file
-      name: Create Secrets Configuration
-      action: fs:write
-      input:
-        path: ./${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}-secrets.yaml
-        content: |
-          # Generated secret environment variables for: ${{ parameters.bkst_app_name }}
-          # Stage: ${{ parameters.bkst_app_stage }}
-          # Region: ${{ parameters.bkst_app_region }}
-          # Auto-generated on: $(date)
+          ${{ parameters.bkst_app_name }}:
+            enabled: true
+            appId: ${{ parameters.bkst_app_name }}
 
-          {%- if parameters.secretVariables and parameters.secretVariables | length > 0 %}
-          # Secret environment variables (stored in Kubernetes Secrets)
-          secrets:
-          {%- for secret in parameters.secretVariables %}
-            - name: {{ secret.secretVarName }}
-              value: "${{ secret.secretVarValue }}"
-          {%- if secret.externalSecretKey %}
-              externalSecretKey: "{{ secret.externalSecretKey }}"
-          {%- endif %}
-          {%- endfor %}
-          {%- else %}
-          # No secret variables defined
-          secrets: []
-          {%- endif %}
+            {%- if parameters.secretVariables and parameters.secretVariables | length > 0 %}
+            # External Secrets Configuration for sensitive data
+            externalsecretEnv:
+              enabled: true
+              env:
+              {%- for secret in parameters.secretVariables %}
+                - name: {{ secret.secretVarName }}
+                  key: "{{ secret.externalSecretKey or 'default-secret-key' }}"
+                  property: "value"
+              {%- endfor %}
+            {%- else %}
+            externalsecretEnv:
+              enabled: false
+              env: []
+            {%- endif %}
+
+            # ConfigMap with regular environment variables
+            cm:
+              enabled: true
+              env:
+              {%- if parameters.envVariables and parameters.envVariables | length > 0 %}
+              {%- for var in parameters.envVariables %}
+                {{ var.varName }}: "${{ var.varValue }}"
+              {%- endfor %}
+              {%- else %}
+                # No regular environment variables defined
+              {%- endif %}
+              dynamic:
+                DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
+                REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
+                AWS_REGION: "{{ .Values.global.env.AWS_REGION }}"
+                AWS_DEFAULT_REGION: "{{ .Values.global.env.AWS_REGION }}"
+
+            ingress:
+              enabled: true
+              annotations:
+                alb.ingress.kubernetes.io/actions.response-503: |
+                  {"type":"fixed-response","fixedResponseConfig":{"contentType":"text/plain","statusCode":"503","messageBody":"503 Service Unavailable"}}
+                alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig":
+                  { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+                alb.ingress.kubernetes.io/group.name: public
+                alb.ingress.kubernetes.io/healthcheck-path: /
+                alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+                alb.ingress.kubernetes.io/scheme: internet-facing
+                alb.ingress.kubernetes.io/success-codes: 200-404
+                alb.ingress.kubernetes.io/target-type: ip
+                kubernetes.io/ingress.class: alb
+              dynamic:
+                enabled: true
+                nsPrefix: false
+                tls: true
+                cfgs:
+                - name: ${{ parameters.bkst_app_name }}
+                  paths:
+                    - /
+                  port: 80
+
+            service:
+              enabled: true
+              external: false
+              ports:
+              - name: application
+                port: 80
+                protocol: TCP
+                targetPort: application
+
+            deployment:
+              enabled: true
+              replicaCount: 1
+              image:
+                ecr: "docker.io"
+                repository: "${{ parameters.bkst_app_imagename }}"
+                tag: "${{ parameters.bkst_app_image_tag }}"
+                pullPolicy: "Always"
+
+              securityContext:
+                enabled: false
+                runAsUser: 0
+                fsGroup: 101
+
+              ports:
+              - name: application
+                containerPort: 80
+                protocol: TCP
+
+              resources:
+                enabled: true
+                requests:
+                  memory: ${{ parameters.bkst_app_mem }}
+                  cpu: 50m
+                limits:
+                  memory: ${{ parameters.bkst_app_mem }}
+                  cpu: ${{ parameters.bkst_app_cpu_limit }}
+
+              probes:
+                enabled: true
+                content:
+                  startupProbe:
+                    httpGet:
+                      path: ${{ parameters.bkst_app_health_probe }}
+                      port: 80
+                    initialDelaySeconds: 10
+                    timeoutSeconds: 5
+                    periodSeconds: 10
+                    failureThreshold: 20
+
+                  livenessProbe:
+                    httpGet:
+                      path: ${{ parameters.bkst_app_health_probe }}
+                      port: 80
+                    initialDelaySeconds: 10
+                    timeoutSeconds: 5
+                    periodSeconds: 60
+                    failureThreshold: 2
+
+                  readinessProbe:
+                    httpGet:
+                      path: ${{ parameters.bkst_app_health_probe }}
+                      port: 80
+                    initialDelaySeconds: 10
+                    timeoutSeconds: 5
+                    periodSeconds: 60
+                    failureThreshold: 2
+
+            jobs: []
 
     # Loop through and log regular environment variables
     - id: log-env-variables
