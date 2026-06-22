@@ -285,19 +285,15 @@ spec:
     # Create a Pull Request with the generated configuration
     - id: create-pull-request
       name: Create Feature Branch and Pull Request
-      action: publish:github:pull-request
-      # action: publish:gitlab:merge-request
+      # action: publish:github:pull-request
+      action: publish:gitlab:merge-request
       input:
-        repoUrl: 'github.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
-        branchName: 'feat/app-${{ parameters.bkst_app_name }}-env-vars'
-        title: 'Add app: ${{ parameters.bkst_app_name }} with environment variables'
+        repoUrl: 'gitlab.phoenix.net-digital.com/?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/new-app-${{ parameters.bkst_app_name }}'
+        targetBranchName: 'main'
+        title: 'New App: ${{ parameters.bkst_app_name }} Scaffolded'
         sourcePath: .
-        description: |
-          This PR adds the configuration for application **${{ parameters.bkst_app_name }}** with:
-          - Stage: ${{ parameters.bkst_app_stage }}
-          - Region: ${{ parameters.bkst_app_region }}
-          - Regular environment variables: ${{ parameters.envVariables | length }}
-          - Secret variables: ${{ parameters.secretVariables | length }}
+        description: 'This MR adds the initial configuration for the new application ${{ parameters.bkst_app_name }}.'
 
   output:
     links:
