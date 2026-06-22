@@ -1,24 +1,24 @@
-# Generated values for: {{ bkst_app_name }}
-# Stage: {{ bkst_app_stage }}
-# Region: {{ bkst_app_region }}
+# Generated values for: ${{ values.bkst_app_name }}
+# Stage: ${{ values.bkst_app_stage }}
+# Region: ${{ values.bkst_app_region }}
 
 global:
   vars:
-    ENV_NAME: "{{ bkst_app_stage }}"
+    ENV_NAME: "${{ values.bkst_app_stage }}"
   env:
-    REGION: "{{ bkst_app_region }}"
+    AWS_REGION: "${{ values.bkst_app_region }}"
 
-{{ bkst_app_name }}:
+${{ values.bkst_app_name }}:
   enabled: true
-  appId: {{ bkst_app_name }}
+  appId: ${{ values.bkst_app_name }}
 
-  {%- if envVariables and envVariables | length > 0 %}
+  {%- if values.envVariables and values.envVariables | length > 0 %}
   # ConfigMap with regular environment variables
   cm:
     enabled: true
     env:
-    {%- for var in envVariables %}
-      {{ var.varName }}: "{{ var.varValue }}"
+    {%- for var in values.envVariables %}
+      {{ var.varName }}: "${{ var.varValue }}"
     {%- endfor %}
     dynamic:
       DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
@@ -36,12 +36,12 @@ global:
       AWS_DEFAULT_REGION: "{{ .Values.global.env.AWS_REGION }}"
   {%- endif %}
 
-  {%- if secretVariables and secretVariables | length > 0 %}
+  {%- if values.secretVariables and values.secretVariables | length > 0 %}
   # External Secrets Configuration for sensitive data
   externalsecretEnv:
     enabled: true
     env:
-    {%- for secret in secretVariables %}
+    {%- for secret in values.secretVariables %}
       - name: {{ secret.secretVarName }}
         key: "{{ secret.secretStoreKey }}"
         property: "{{ secret.secretProperty }}"
@@ -61,7 +61,7 @@ global:
       nsPrefix: false
       tls: true
       cfgs:
-      - name: {{ bkst_app_name }}
+      - name: ${{ values.bkst_app_name }}
         paths:
           - /
         port: 80
@@ -80,8 +80,8 @@ global:
     replicaCount: 1
     image:
       ecr: "docker.io"
-      repository: "{{ bkst_app_imagename }}"
-      tag: "{{ bkst_app_image_tag }}"
+      repository: "${{ values.bkst_app_imagename }}"
+      tag: "${{ values.bkst_app_image_tag }}"
       pullPolicy: "Always"
 
     securityContext:
@@ -97,18 +97,18 @@ global:
     resources:
       enabled: true
       requests:
-        memory: {{ bkst_app_mem }}
+        memory: ${{ values.bkst_app_mem }}
         cpu: 50m
       limits:
-        memory: {{ bkst_app_mem }}
-        cpu: {{ bkst_app_cpu_limit }}
+        memory: ${{ values.bkst_app_mem }}
+        cpu: ${{ values.bkst_app_cpu_limit }}
 
     probes:
       enabled: true
       content:
         startupProbe:
           httpGet:
-            path: {{ bkst_app_health_probe }}
+            path: ${{ values.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -117,7 +117,7 @@ global:
 
         livenessProbe:
           httpGet:
-            path: {{ bkst_app_health_probe }}
+            path: ${{ values.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
@@ -126,7 +126,7 @@ global:
 
         readinessProbe:
           httpGet:
-            path: {{ bkst_app_health_probe }}
+            path: ${{ values.bkst_app_health_probe }}
             port: 80
           initialDelaySeconds: 10
           timeoutSeconds: 5
