@@ -297,8 +297,8 @@ spec:
 
   output:
     links:
-      - title: Pull Request
-        url: ${{ steps['create-pull-request'].output.remoteUrl }}
+      - title: Review the Merge Request and merge to apply changes
+        url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}
     text:
       - title: Deployment Configuration Created
         content: |
