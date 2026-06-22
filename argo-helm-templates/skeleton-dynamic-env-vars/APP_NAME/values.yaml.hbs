@@ -1,0 +1,131 @@
+global:
+  # Variables that are used to build env vars for the specific environment
+  # Repo to be used ${{ environment.secrets.repoName }}  , with owner ${{ environment.secrets.repoOwner }} , aws region ${{ environment.secrets.region }}
+  vars:
+    ENV_NAME: "dev"
+    BASE_DB_URL: "Dummy variable"
+    BASE_DB_OPTS: "usessl=true&sslmode=require"
+    BASE_DB_USER: "postgres"
+  # Env variables that are applied to every service
+  env:
+    AWS_REGION: "eu-central-1"
+
+${{ values.bkst_app_name }}:
+  enabled: true
+  appId: ${{ values.bkst_app_name }}
+  externalsecretEnv:
+    enabled: false
+    env:
+    - name: DATASOURCE_USERNAME
+      key: "Dummy variable"
+      property: username
+    - name: SAMPLE_VAR
+      key: "Dummy variable"
+      property: password
+  cm:
+    enabled: true
+    env:
+      APPLICATION_PORT: 8080
+    dynamic:
+      SAMPLE_DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
+      REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
+      REGION: "{{ .Values.global.env.REGION }}"
+      DEFAULT_REGION: "{{ .Values.global.env.REGION }}"
+
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: traefik
+    dynamic:
+      enabled: true
+#      nsPrefix: false
+#      tls: true
+#      baseDomain: itgix.eu
+#      cfgs:
+#      - name: ${{ values.bkst_app_name }}
+#        paths:
+#          - /
+#        port: 80
+
+  service:
+    enabled: true
+    external: false
+    ports:
+    - name: application
+      port: 80
+      protocol: TCP
+      targetPort: application
+
+  serviceAccount:
+    enabled: false
+    name: "aurora-tc-irsa"
+    annotations: {}
+
+  deployment:
+    enabled: true
+
+    serviceAccountName:
+      enabled: false
+      name: "aurora-tc-irsa"
+
+    replicaCount: 1
+
+    image:
+      pullSecret:
+        enabled: false
+        secretName: "-"
+      ecr: "docker.io"
+      repository: "nginx"
+      tag: "1.27-alpine3.20-slim"
+      pullPolicy: "Always"
+
+    securityContext:
+      enabled: true
+      runAsUser: 0
+      fsGroup: 101
+
+    ports:
+    - name: application
+      containerPort: 80
+      protocol: TCP
+
+    resources:
+      enabled: true
+      requests:
+        memory: 512Mi
+        cpu: 50m
+      limits:
+        memory: 1536Mi
+        cpu: 2
+
+    probes:
+      enabled: true
+      content:
+        startupProbe:
+          httpGet:
+            path: ${{ values.bkst_app_health_probe }}
+            port: 80
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 20
+
+        livenessProbe:
+          httpGet:
+            path: ${{ values.bkst_app_health_probe }}
+            port: 80
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 60
+          failureThreshold: 2
+
+        readinessProbe:
+          httpGet:
+            path: ${{ values.bkst_app_health_probe }}
+            port: 80
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 60
+          failureThreshold: 2
+
+  jobs: []
