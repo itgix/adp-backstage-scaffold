@@ -1,0 +1,433 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: bckstg-dynamic-env-variables-deployer
+  title: Dynamic Environment Variables Application Deployer
+  description: |
+    Deploy an application with dynamically defined environment variables.
+    Step 1: Define which environment variables your app needs (regular + secrets).
+    Step 2: Provide values for each variable you defined.
+    Uses the same Helm chart structure as standard deployments.
+  tags:
+    - recommended
+    - argocd
+    - kubernetes
+    - helm
+    - dynamic-env-vars
+    - environment-variables
+
+spec:
+  owner: platform-team
+  type: service
+  lifecycle: experimental
+
+  parameters:
+    # STEP 1: Basic application info + define env variable names
+    - title: Application Configuration
+      description: Basic app info and declare which environment variables you need
+      properties:
+        bkst_app_name:
+          title: Application Name
+          type: string
+          description: Application name (lowercase alphanumeric with hyphens)
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          maxLength: 20
+
+        bkst_app_description:
+          title: Application Description
+          type: string
+          description: Short description of the application
+
+        bkst_app_stage:
+          title: Deployment Stage
+          type: string
+          enum:
+            - dev
+            - staging
+            - prod
+          default: dev
+          enumNames:
+            - Development
+            - Staging
+            - Production
+
+        bkst_app_region:
+          title: Region
+          type: string
+          enum:
+            - eu-west-1
+            - eu-central-1
+            - us-east-1
+          default: eu-west-1
+          enumNames:
+            - 'EU (Ireland)'
+            - 'EU (Frankfurt)'
+            - 'US (N. Virginia)'
+
+        # ARRAY: Regular environment variables
+        envVariables:
+          title: Regular Environment Variables
+          description: |
+            Define the names of regular (non-secret) environment variables your application needs.
+            You will provide values for each in the next step.
+          type: array
+          minItems: 0
+          maxItems: 20
+          ui:options:
+            addable: true
+            orderable: true
+            removable: true
+          items:
+            type: object
+            required:
+              - varName
+            properties:
+              varName:
+                title: Variable Name
+                type: string
+                description: Environment variable name (e.g., LOG_LEVEL, API_TIMEOUT)
+                pattern: '^[A-Z_][A-Z0-9_]*$'
+                maxLength: 50
+
+              varDescription:
+                title: Description
+                type: string
+                description: What is this variable for?
+
+              isOptional:
+                title: Optional?
+                type: boolean
+                default: false
+                description: If true, app will work without this variable
+
+        # ARRAY: Secret environment variables
+        secretVariables:
+          title: Secret Environment Variables
+          description: |
+            Define the names of secret variables (passwords, tokens, API keys, etc.).
+            These will be stored in Kubernetes Secrets instead of ConfigMaps.
+            Values provided in the next step will be stored securely.
+          type: array
+          minItems: 0
+          maxItems: 20
+          ui:options:
+            addable: true
+            orderable: true
+            removable: true
+          items:
+            type: object
+            required:
+              - secretVarName
+            properties:
+              secretVarName:
+                title: Secret Variable Name
+                type: string
+                description: Environment variable name for secret (e.g., DB_PASSWORD, API_KEY)
+                pattern: '^[A-Z_][A-Z0-9_]*$'
+                maxLength: 50
+
+              secretVarDescription:
+                title: Description
+                type: string
+                description: What is this secret for?
+
+              secretStoreKey:
+                title: External Secret Store Key
+                type: string
+                description: |
+                  Key in the external secret store (e.g., AWS Secrets Manager).
+                  Format: my-app/db-password
+                default: ''
+
+    # STEP 2: Provide values for each variable declared in Step 1
+    - title: Environment Variable Values
+      description: Provide the values for the environment variables you declared
+      properties:
+        # Regular environment variable values
+        # These will be generated dynamically based on Step 1 input
+        envVarValues:
+          title: Regular Environment Variable Values
+          type: object
+          description: Provide values for each regular environment variable
+
+        # Secret environment variable values
+        # These will be generated dynamically based on Step 1 input
+        secretVarValues:
+          title: Secret Environment Variable Values
+          type: object
+          description: |
+            Provide values for secret variables.
+            Note: These values should be treated as sensitive and handled securely.
+            In production, consider using external secret management (AWS Secrets Manager, etc.)
+
+    # STEP 3: Application deployment configuration
+    - title: Application Deployment Configuration
+      description: Configure how your application will be deployed
+      properties:
+        bkst_app_imagename:
+          title: Container Image Repository
+          type: string
+          description: Container image repository (e.g., myregistry.azurecr.io/myapp or nginx)
+          default: nginx
+
+        bkst_app_image_tag:
+          title: Container Image Tag
+          type: string
+          description: Docker image tag/version
+          default: 'latest'
+
+        bkst_app_health_probe:
+          title: Health Check Path
+          type: string
+          description: HTTP path for liveness/readiness probes
+          default: '/'
+
+        bkst_app_mem:
+          title: Memory Limit
+          type: string
+          enum:
+            - 256Mi
+            - 512Mi
+            - 1Gi
+            - 2Gi
+            - 4Gi
+          default: 512Mi
+          enumNames:
+            - 256 MB
+            - 512 MB
+            - 1 GB
+            - 2 GB
+            - 4 GB
+
+        bkst_app_cpu_limit:
+          title: CPU Limit
+          type: string
+          enum:
+            - 100m
+            - 250m
+            - 500m
+            - 1000m
+            - 2000m
+          default: 500m
+          enumNames:
+            - 0.1 core
+            - 0.25 core
+            - 0.5 core
+            - 1 core
+            - 2 cores
+
+    # STEP 4: Git repository configuration
+    - title: Git Repository Configuration
+      description: Where to push the generated configuration
+      properties:
+        gitProvider:
+          title: Git Provider
+          type: string
+          enum:
+            - github
+            - gitlab
+          default: github
+          enumNames:
+            - GitHub
+            - GitLab
+
+        repositoryUrl:
+          title: Repository URL
+          type: string
+          ui:widget: textarea
+          description: |
+            Format for GitHub: github.com?owner=<owner>&repo=<repo>
+            Format for GitLab: gitlab.com?owner=<group>&repo=<repo>
+          placeholder: 'github.com?owner=myorg&repo=my-app-config'
+
+  steps:
+    # Debug step: Log the input variables
+    - id: log-variables
+      name: Log Environment Variables Definition
+      action: debug:log
+      input:
+        message: |
+          Creating deployment for application: ${{ parameters.bkst_app_name }}
+          Regular env variables: ${{ parameters.envVariables | length }}
+          Secret env variables: ${{ parameters.secretVariables | length }}
+        extra: |
+          Regular vars: ${{ parameters.envVariables | dump }}
+          Secret vars: ${{ parameters.secretVariables | dump }}
+          Regular values: ${{ parameters.envVarValues | dump }}
+          Secret values: ${{ parameters.secretVarValues | dump }}
+
+    # Fetch the base skeleton (reuses existing Helm chart structure)
+    - id: fetch-skeleton
+      name: Fetch Application Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: ./
+        values:
+          bkst_app_name: ${{ parameters.bkst_app_name }}
+          bkst_app_stage: ${{ parameters.bkst_app_stage }}
+          bkst_app_region: ${{ parameters.bkst_app_region }}
+          bkst_app_imagename: ${{ parameters.bkst_app_imagename }}
+          bkst_app_image_tag: ${{ parameters.bkst_app_image_tag }}
+          bkst_app_health_probe: ${{ parameters.bkst_app_health_probe }}
+          bkst_app_mem: ${{ parameters.bkst_app_mem }}
+          bkst_app_cpu_limit: ${{ parameters.bkst_app_cpu_limit }}
+
+    # Loop through regular env variables and create a values file
+    - id: create-env-values-file
+      name: Create Environment Variables Configuration
+      action: fs:write
+      input:
+        path: ${{ (steps['fetch-skeleton'].output.targetPath or './') }}${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}-env-vars.yaml
+        content: |
+          # Generated environment variables for: ${{ parameters.bkst_app_name }}
+          # Stage: ${{ parameters.bkst_app_stage }}
+          # Region: ${{ parameters.bkst_app_region }}
+
+          # Regular environment variables (stored in ConfigMap)
+          {{#if parameters.envVariables}}
+          env:
+          {{#each parameters.envVariables}}
+            {{ this.varName }}: "${{ lookup parameters.envVarValues this.varName }}"
+          {{/each}}
+          {{else}}
+          # No regular environment variables defined
+          env: {}
+          {{/if}}
+
+    # Create secret environment variables file
+    - id: create-secrets-values-file
+      name: Create Secret Variables Configuration
+      action: fs:write
+      input:
+        path: ${{ (steps['fetch-skeleton'].output.targetPath or './') }}${{ parameters.bkst_app_name }}/values/${{ parameters.bkst_app_stage }}-secrets.yaml
+        content: |
+          # Generated secret environment variables for: ${{ parameters.bkst_app_name }}
+          # Stage: ${{ parameters.bkst_app_stage }}
+          # Region: ${{ parameters.bkst_app_region }}
+
+          # Secret environment variables (stored in Kubernetes Secrets)
+          {{#if parameters.secretVariables}}
+          secrets:
+          {{#each parameters.secretVariables}}
+            - name: {{ this.secretVarName }}
+              value: "${{ lookup parameters.secretVarValues this.secretVarName }}"
+              externalSecretKey: "{{ this.secretStoreKey }}"
+          {{/each}}
+          {{else}}
+          # No secret variables defined
+          secrets: []
+          {{/if}}
+
+    # Loop through each regular variable and log it
+    - id: log-env-variables
+      name: Log Regular Environment Variables
+      each: ${{ parameters.envVariables }}
+      action: debug:log
+      input:
+        message: 'Regular env var: ${{ each.value.varName }} = ${{ lookup parameters.envVarValues each.value.varName }}'
+
+    # Loop through each secret variable and log it (without showing values)
+    - id: log-secret-variables
+      name: Log Secret Variables Defined
+      each: ${{ parameters.secretVariables }}
+      action: debug:log
+      input:
+        message: 'Secret env var defined: ${{ each.value.secretVarName }}'
+
+    # Create a summary document
+    - id: create-documentation
+      name: Create Environment Variables Documentation
+      action: fs:write
+      input:
+        path: ./ENV_VARS_DOCUMENTATION.md
+        content: |
+          # Environment Variables Documentation
+
+          **Application:** ${{ parameters.bkst_app_name }}
+          **Stage:** ${{ parameters.bkst_app_stage }}
+          **Region:** ${{ parameters.bkst_app_region }}
+
+          ## Regular Environment Variables
+
+          {{#if parameters.envVariables}}
+          | Variable Name | Description | Optional | Value |
+          |---|---|---|---|
+          {{#each parameters.envVariables}}
+          | `{{ this.varName }}` | {{ this.varDescription }} | {{ this.isOptional }} | ${{ lookup parameters.envVarValues this.varName }} |
+          {{/each}}
+          {{else}}
+          No regular environment variables defined.
+          {{/if}}
+
+          ## Secret Environment Variables
+
+          {{#if parameters.secretVariables}}
+          | Variable Name | Description | External Secret Key |
+          |---|---|---|
+          {{#each parameters.secretVariables}}
+          | `{{ this.secretVarName }}` | {{ this.secretVarDescription }} | `{{ this.secretStoreKey }}` |
+          {{/each}}
+
+          **Note:** Secret values are NOT displayed in this documentation for security reasons.
+          {{else}}
+          No secret variables defined.
+          {{/if}}
+
+          ## Application Configuration
+
+          - **Container Image:** `${{ parameters.bkst_app_imagename }}:${{ parameters.bkst_app_image_tag }}`
+          - **Memory Limit:** ${{ parameters.bkst_app_mem }}
+          - **CPU Limit:** ${{ parameters.bkst_app_cpu_limit }}
+          - **Health Check Path:** ${{ parameters.bkst_app_health_probe }}
+
+    # Publish to GitHub
+    - id: publish-github
+      if: ${{ parameters.gitProvider === 'github' }}
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        allowedHosts:
+          - github.com
+        description: 'Application deployment for ${{ parameters.bkst_app_name }} with dynamic env vars'
+        repoUrl: ${{ parameters.repositoryUrl }}
+        sourcePath: .
+
+    # Publish to GitLab
+    - id: publish-gitlab
+      if: ${{ parameters.gitProvider === 'gitlab' }}
+      name: Publish to GitLab
+      action: publish:gitlab
+      input:
+        repoUrl: ${{ parameters.repositoryUrl }}
+        sourcePath: .
+
+    # Register in Backstage catalog
+    - id: register-catalog
+      name: Register in Backstage Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish-github'].output.repoContentsUrl | default(steps['publish-gitlab'].output.repoContentsUrl) }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    text:
+      - title: Deployment Configuration Created
+        content: |
+          Successfully created deployment configuration for **${{ parameters.bkst_app_name }}**
+
+          **Repository:** ${{ steps['publish-github'].output.remoteUrl | default(steps['publish-gitlab'].output.remoteUrl) }}
+
+          **Configuration Summary:**
+          - **Stage:** ${{ parameters.bkst_app_stage }}
+          - **Region:** ${{ parameters.bkst_app_region }}
+          - **Image:** ${{ parameters.bkst_app_imagename }}:${{ parameters.bkst_app_image_tag }}
+          - **Regular Environment Variables:** ${{ parameters.envVariables | length }}
+          - **Secret Environment Variables:** ${{ parameters.secretVariables | length }}
+
+          **Next Steps:**
+          1. Review the generated configuration in your repository
+          2. Verify environment variable values are correct
+          3. For secret variables, ensure they are configured in your external secret store
+          4. Merge the pull/merge request to trigger ArgoCD deployment
+          5. Monitor the deployment in your Kubernetes cluster

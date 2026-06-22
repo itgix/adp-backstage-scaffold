@@ -1,0 +1,67 @@
+# Generated service configuration for: {{ serviceName }}
+# Stage: {{ deploymentStage }} | Region: {{ awsRegion }}
+
+# Service Metadata
+serviceName: {{ serviceName }}
+appNamePrefix: {{ appNamePrefix }}
+environment: {{ deploymentStage }}
+region: {{ awsRegion }}
+
+# Container Configuration
+image:
+  repository: {{ image }}
+  pullPolicy: IfNotPresent
+
+# Pod Replicas
+replicaCount: {{ replicas }}
+
+# Resource Limits and Requests
+resources:
+  requests:
+    cpu: {{ cpuRequest }}
+    memory: {{ memoryRequest }}
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Service Port
+service:
+  port: {{ servicePort }}
+  targetPort: {{ servicePort }}
+  protocol: TCP
+
+# Health Checks
+healthCheck:
+  liveness:
+    path: {{ healthCheckPath }}
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readiness:
+    path: {{ healthCheckPath }}
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# Database Configuration
+{{#if requiresDatabase}}
+database:
+  enabled: true
+  # Database details should be injected via ExternalSecrets
+  # Configure in your environment-specific values
+  secretName: {{ appNamePrefix }}-{{ serviceName }}-db-secret
+{{else}}
+database:
+  enabled: false
+{{/if}}
+
+# Pod Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+
+# Network Policy
+networkPolicy:
+  enabled: false  # Enable and configure as needed per environment
