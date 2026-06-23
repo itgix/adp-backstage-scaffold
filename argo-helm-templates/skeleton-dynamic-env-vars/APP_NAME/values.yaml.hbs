@@ -4,8 +4,6 @@ global:
   vars:
     ENV_NAME: "dev"
     BASE_DB_URL: "Dummy variable"
-    BASE_DB_OPTS: "usessl=true&sslmode=require"
-    BASE_DB_USER: "postgres"
   # Env variables that are applied to every service
   env:
     REGION: "eu-central-1"
@@ -16,9 +14,6 @@ ${{ values.bkst_app_name }}:
   externalsecretEnv:
     enabled: false
     env:
-    - name: DATASOURCE_USERNAME
-      key: "Dummy variable"
-      property: username
     - name: SAMPLE_VAR
       key: "Dummy variable"
       property: password
@@ -28,9 +23,7 @@ ${{ values.bkst_app_name }}:
       APPLICATION_PORT: 8080
     dynamic:
       SAMPLE_DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
-      REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
       REGION: "{{ .Values.global.env.REGION }}"
-      DEFAULT_REGION: "{{ .Values.global.env.REGION }}"
 
   ingress:
     enabled: true
