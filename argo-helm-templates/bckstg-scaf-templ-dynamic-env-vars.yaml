@@ -307,7 +307,7 @@ spec:
 
 
     # Create a Pull Request with the generated configuration
-    - id: create-pull-request
+    - id: create-merge-request
       name: Create Feature Branch and Pull Request
       # action: publish:github:pull-request
       action: publish:gitlab:merge-request
