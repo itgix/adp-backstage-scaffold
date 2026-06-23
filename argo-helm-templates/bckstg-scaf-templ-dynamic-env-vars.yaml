@@ -237,7 +237,7 @@ spec:
 
     # Fetch and render the skeleton with all parameters including env variables
     - id: fetch-base
-      name: Fetch and Render Template with Environment Variables
+      name: Fetch and Render Template with Environment Variables and ArgoCD Application
       action: fetch:template
       input:
         url: ./skeleton-dynamic-env-vars/
@@ -272,6 +272,10 @@ spec:
 
           - from: helm/APP_NAME/Chart.yaml.hbs
             to: helm/APP_NAME/Chart.yaml
+
+          # ArgoCD application template
+          - from: helm/applications/templates/argocd-application-templ.yaml.hbs
+            to: helm/applications/templates/application-${{ parameters.bkst_app_name }}.yaml
 
           # 2) REGION directory
           - from: helm/APP_NAME/values/STAGE/REGION
