@@ -65,6 +65,20 @@ spec:
           enumNames:
             - 'Düsseldorf (dus6)'
 
+        enableIngress:
+          title: Expose service with Ingress
+          type: boolean
+          description: Enable ingress to expose the service to the outside
+          default: false
+
+        ingressUrl:
+          title: Ingress URL (optional)
+          type: string
+          description: The URL/hostname for the ingress (e.g., myapp.example.com)
+          maxLength: 255
+          ui:options:
+            rows: 1
+
     # STEP 2: Regular environment variables with values
     - title: Regular Environment Variables
       description: |
@@ -216,6 +230,8 @@ spec:
           Creating deployment for application: ${{ parameters.bkst_app_name }}
           Stage: ${{ parameters.bkst_app_stage }}
           Region: ${{ parameters.bkst_app_region }}
+          Ingress Enabled: ${{ parameters.enableIngress }}
+          Ingress URL: ${{ parameters.ingressUrl }}
           Regular env variables: ${{ parameters.envVariables | length }}
           Secret env variables: ${{ parameters.secretVariables | length }}
 
@@ -238,6 +254,8 @@ spec:
           bkst_app_description: ${{ parameters.bkst_app_description }}
           envVariables: ${{ parameters.envVariables }}
           secretVariables: ${{ parameters.secretVariables }}
+          enableIngress: ${{ parameters.enableIngress }}
+          ingressUrl: ${{ parameters.ingressUrl }}
 
     # Rename files and directories to substitute placeholders
     - id: rename-files
