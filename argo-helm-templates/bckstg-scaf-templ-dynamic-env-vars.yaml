@@ -335,10 +335,6 @@ spec:
           - **Regular Environment Variables:** ${{ parameters.envVariables | length }}
           - **Secret Environment Variables:** ${{ parameters.secretVariables | length }}
 
-          **Generated Environment Variable Files:**
-          - `values/${{ parameters.bkst_app_stage }}-env-vars.yaml` - Regular ConfigMap environment variables
-          - `values/${{ parameters.bkst_app_stage }}-secrets.yaml` - Kubernetes Secret configuration
-
           **Next Steps:**
           1. Review the pull request
           2. Verify environment variable values and secrets are correct
