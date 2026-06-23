@@ -6,7 +6,7 @@ global:
   vars:
     ENV_NAME: "${{ values.bkst_app_stage }}"
   env:
-    AWS_REGION: "${{ values.bkst_app_region }}"
+    REGION: "${{ values.bkst_app_region }}"
 
 ${{ values.bkst_app_name }}:
   enabled: true
@@ -21,19 +21,15 @@ ${{ values.bkst_app_name }}:
       ${{ var.varName }}: "${{ var.varValue }}"
     {%- endfor %}
     dynamic:
-      DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
-      REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
-      AWS_REGION: "{{ .Values.global.env.AWS_REGION }}"
-      AWS_DEFAULT_REGION: "{{ .Values.global.env.AWS_REGION }}"
+      SAMPLE_DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
+
   {%- else %}
   cm:
     enabled: true
     env: {}
     dynamic:
       DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
-      REGION_NAME: "{{ .Values.global.env.AWS_REGION }}"
-      AWS_REGION: "{{ .Values.global.env.AWS_REGION }}"
-      AWS_DEFAULT_REGION: "{{ .Values.global.env.AWS_REGION }}"
+      REGION_NAME: "{{ .Values.global.env.REGION }}"
   {%- endif %}
 
   {%- if values.secretVariables and values.secretVariables | length > 0 %}
@@ -42,9 +38,9 @@ ${{ values.bkst_app_name }}:
     enabled: true
     env:
     {%- for secret in values.secretVariables %}
-      - name: {{ secret.secretVarName }}
-        key: "{{ secret.secretStoreKey }}"
-        property: "{{ secret.secretProperty }}"
+      - name: ${{ secret.secretVarName }}
+        key: "${{ secret.secretStoreKey }}"
+        property: "${{ secret.secretProperty }}"
     {%- endfor %}
   {%- else %}
   externalsecretEnv:
@@ -102,9 +98,9 @@ ${{ values.bkst_app_name }}:
       pullSecret:
         enabled: true
         externalSecret: true
-        secretName: connector-token-registry-pull-secret
+        secretName: registry-pull-secret
         registry: registry.phoenix.net-digital.com
-        vaultKey: "app/phoenix-orbit"
+        vaultKey: "common/image_registry_pull_secret"
       ecr: ""
       repository: "${{ values.bkst_app_imagename }}"
       tag: "${{ values.bkst_app_image_tag }}"
