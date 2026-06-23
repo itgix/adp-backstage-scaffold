@@ -18,7 +18,7 @@ ${{ values.bkst_app_name }}:
     enabled: true
     env:
     {%- for var in values.envVariables %}
-      {{ var.varName }}: "${{ var.varValue }}"
+      ${{ var.varName }}: "${{ var.varValue }}"
     {%- endfor %}
     dynamic:
       DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"
@@ -52,9 +52,11 @@ ${{ values.bkst_app_name }}:
     env: []
   {%- endif %}
 
+  {%- if values.enableIngress %}
   ingress:
     enabled: true
     annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
       kubernetes.io/ingress.class: traefik
     dynamic:
       enabled: true
@@ -62,9 +64,26 @@ ${{ values.bkst_app_name }}:
       tls: true
       cfgs:
       - name: ${{ values.bkst_app_name }}
+        hosts:
+        {%- if values.ingressUrl %}
+          - ${{ values.ingressUrl }}
+        {%- else %}
+          - ${{ values.bkst_app_name }}.example.com
+        {%- endif %}
         paths:
           - /
         port: 80
+        tls:
+          enabled: true
+        {%- if values.ingressUrl %}
+          secretName: ${{ values.bkst_app_name }}-tls
+          hosts:
+            - ${{ values.ingressUrl }}
+        {%- endif %}
+  {%- else %}
+  ingress:
+    enabled: false
+  {%- endif %}
 
   service:
     enabled: true
@@ -79,7 +98,14 @@ ${{ values.bkst_app_name }}:
     enabled: true
     replicaCount: 1
     image:
-      ecr: "docker.io"
+    image:
+      pullSecret:
+        enabled: true
+        externalSecret: true
+        secretName: connector-token-registry-pull-secret
+        registry: registry.phoenix.net-digital.com
+        vaultKey: "app/phoenix-orbit"
+      ecr: ""
       repository: "${{ values.bkst_app_imagename }}"
       tag: "${{ values.bkst_app_image_tag }}"
       pullPolicy: "Always"

@@ -65,6 +65,20 @@ spec:
           enumNames:
             - 'Düsseldorf (dus6)'
 
+        enableIngress:
+          title: Expose service with Ingress
+          type: boolean
+          description: Enable ingress to expose the service to the outside
+          default: false
+
+        ingressUrl:
+          title: Ingress URL (optional)
+          type: string
+          description: The URL/hostname for the ingress (e.g., myapp.example.com)
+          maxLength: 255
+          ui:options:
+            rows: 1
+
     # STEP 2: Regular environment variables with values
     - title: Regular Environment Variables
       description: |
@@ -178,6 +192,7 @@ spec:
             - 1Gi
             - 2Gi
             - 4Gi
+            - 6Gi
           default: 512Mi
           enumNames:
             - 256 MB
@@ -185,6 +200,7 @@ spec:
             - 1 GB
             - 2 GB
             - 4 GB
+            - 6 GB
 
         bkst_app_cpu_limit:
           title: CPU Limit
@@ -214,12 +230,14 @@ spec:
           Creating deployment for application: ${{ parameters.bkst_app_name }}
           Stage: ${{ parameters.bkst_app_stage }}
           Region: ${{ parameters.bkst_app_region }}
+          Ingress Enabled: ${{ parameters.enableIngress }}
+          Ingress URL: ${{ parameters.ingressUrl }}
           Regular env variables: ${{ parameters.envVariables | length }}
           Secret env variables: ${{ parameters.secretVariables | length }}
 
     # Fetch and render the skeleton with all parameters including env variables
     - id: fetch-base
-      name: Fetch and Render Template with Environment Variables
+      name: Fetch and Render Template with Environment Variables and ArgoCD Application
       action: fetch:template
       input:
         url: ./skeleton-dynamic-env-vars/
@@ -236,6 +254,8 @@ spec:
           bkst_app_description: ${{ parameters.bkst_app_description }}
           envVariables: ${{ parameters.envVariables }}
           secretVariables: ${{ parameters.secretVariables }}
+          enableIngress: ${{ parameters.enableIngress }}
+          ingressUrl: ${{ parameters.ingressUrl }}
 
     # Rename files and directories to substitute placeholders
     - id: rename-files
@@ -252,6 +272,10 @@ spec:
 
           - from: helm/APP_NAME/Chart.yaml.hbs
             to: helm/APP_NAME/Chart.yaml
+
+          # ArgoCD application template
+          - from: helm/applications/templates/argocd-application-templ.yaml.hbs
+            to: helm/applications/templates/application-${{ parameters.bkst_app_name }}.yaml
 
           # 2) REGION directory
           - from: helm/APP_NAME/values/STAGE/REGION
@@ -297,8 +321,8 @@ spec:
 
   output:
     links:
-      - title: Pull Request
-        url: ${{ steps['create-pull-request'].output.remoteUrl }}
+      - title: Review the Merge Request and merge to apply changes
+        url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}
     text:
       - title: Deployment Configuration Created
         content: |
