@@ -18,7 +18,7 @@ ${{ values.bkst_app_name }}:
     enabled: true
     env:
     {%- for var in values.envVariables %}
-      {{ var.varName }}: "${{ var.varValue }}"
+      ${{ var.varName }}: "${{ var.varValue }}"
     {%- endfor %}
     dynamic:
       DATASOURCE_DB_URL: "jdbc:postgresql://{{ .Values.global.vars.BASE_DB_URL }}:5432/postgres?{{ .Values.global.vars.BASE_DB_OPTS }}"

@@ -178,6 +178,7 @@ spec:
             - 1Gi
             - 2Gi
             - 4Gi
+            - 6Gi
           default: 512Mi
           enumNames:
             - 256 MB
@@ -185,6 +186,7 @@ spec:
             - 1 GB
             - 2 GB
             - 4 GB
+            - 6 GB
 
         bkst_app_cpu_limit:
           title: CPU Limit
