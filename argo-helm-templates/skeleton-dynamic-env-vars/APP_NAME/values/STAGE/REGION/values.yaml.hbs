@@ -94,7 +94,6 @@ ${{ values.bkst_app_name }}:
     enabled: true
     replicaCount: 1
     image:
-    image:
       pullSecret:
         enabled: true
         externalSecret: true
@@ -113,7 +112,7 @@ ${{ values.bkst_app_name }}:
 
     ports:
     - name: application
-      containerPort: 80
+      containerPort: ${{ values.bkst_app_listen_port }}
       protocol: TCP
 
     resources:
@@ -131,7 +130,7 @@ ${{ values.bkst_app_name }}:
         startupProbe:
           httpGet:
             path: ${{ values.bkst_app_health_probe }}
-            port: 80
+            port: ${{ values.bkst_app_listen_port }}
           initialDelaySeconds: 10
           timeoutSeconds: 5
           periodSeconds: 10
@@ -140,7 +139,7 @@ ${{ values.bkst_app_name }}:
         livenessProbe:
           httpGet:
             path: ${{ values.bkst_app_health_probe }}
-            port: 80
+            port: ${{ values.bkst_app_listen_port }}
           initialDelaySeconds: 10
           timeoutSeconds: 5
           periodSeconds: 60
@@ -149,7 +148,7 @@ ${{ values.bkst_app_name }}:
         readinessProbe:
           httpGet:
             path: ${{ values.bkst_app_health_probe }}
-            port: 80
+            port: ${{ values.bkst_app_listen_port }}
           initialDelaySeconds: 10
           timeoutSeconds: 5
           periodSeconds: 60

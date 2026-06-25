@@ -183,6 +183,12 @@ spec:
           description: HTTP path for liveness/readiness probes
           default: '/'
 
+        bkst_app_listen_port:
+          title: App HTTP listen port
+          type: string
+          description: The port on which the application is listening
+          default: '8080'
+
         bkst_app_mem:
           title: Memory Limit
           type: string
@@ -249,6 +255,7 @@ spec:
           bkst_app_imagename: ${{ parameters.bkst_app_imagename }}
           bkst_app_image_tag: ${{ parameters.bkst_app_image_tag }}
           bkst_app_health_probe: ${{ parameters.bkst_app_health_probe }}
+          bkst_app_listen_port: ${{ parameters.bkst_app_listen_port }}
           bkst_app_mem: ${{ parameters.bkst_app_mem }}
           bkst_app_cpu_limit: ${{ parameters.bkst_app_cpu_limit }}
           bkst_app_description: ${{ parameters.bkst_app_description }}
