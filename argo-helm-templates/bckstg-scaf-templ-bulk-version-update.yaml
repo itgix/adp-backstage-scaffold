@@ -1,0 +1,323 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: bulk-application-version-update
+  title: Bulk Update Application Versions
+  description: |
+    Select one or more applications from the list, provide the new container image
+    tag (version) for each, pick the target stage, and the automation will update
+    `deployment.image.tag` in the corresponding Helm values file of the GitOps
+    repository, then commit and push (or open a merge request).
+  tags:
+    - argocd
+    - gitops
+    - helm
+    - version-bump
+    - release
+
+spec:
+  owner: platform-team
+  type: gitops-config
+  lifecycle: experimental
+
+  parameters:
+    # ---------------------------------------------------------------------------
+    # STEP 1: pick the applications and their new versions
+    # ---------------------------------------------------------------------------
+    - title: Applications to update
+      description: |
+        Tick the applications you want to update and fill in the new image tag for
+        each ticked application. Rows that are not ticked are ignored - leave their
+        version field empty.
+      required: [applications]
+      properties:
+        applications:
+          title: Applications
+          type: array
+          # The list is fixed: rows cannot be added, removed or reordered so the
+          # form always mirrors the applications that exist in the GitOps repo.
+          # CONFIGURABLE: add/remove entries in `default` below to change the list.
+          ui:options:
+            addable: false
+            removable: false
+            orderable: false
+          default:
+            - name: phoenix-bridge
+              selected: false
+              version: ''
+            - name: phoenix-coreflow
+              selected: false
+              version: ''
+            - name: phoenix-gateway
+              selected: false
+              version: ''
+            - name: phoenix-orbit
+              selected: false
+              version: ''
+            - name: phoenix-router
+              selected: false
+              version: ''
+            - name: connector-token
+              selected: false
+              version: ''
+          items:
+            type: object
+            required: [name]
+            properties:
+              name:
+                title: Application
+                type: string
+                # Rendered read-only: the value comes from `default` above.
+                ui:readonly: true
+              selected:
+                title: Update
+                type: boolean
+                default: false
+              version:
+                title: New image tag
+                type: string
+                description: 'e.g. 1.4.2, v2.0.0-rc1, sha-8f3c1a2'
+                maxLength: 128
+                ui:placeholder: 'required when Update is ticked'
+            # VALIDATION: a ticked application must carry a non-empty, well formed
+            # version. Unticked rows stay unconstrained so they can be left empty.
+            if:
+              properties:
+                selected:
+                  const: true
+              required: [selected]
+            then:
+              properties:
+                version:
+                  type: string
+                  minLength: 1
+                  pattern: '^[A-Za-z0-9][A-Za-z0-9._+-]*$'
+              required: [version]
+
+    # ---------------------------------------------------------------------------
+    # STEP 2: where to apply the change
+    # ---------------------------------------------------------------------------
+    - title: Target environment
+      required: [stage, region, changeId]
+      properties:
+        stage:
+          title: Stage
+          type: string
+          # CONFIGURABLE: values must match the directory names used under
+          # <app>/values/<STAGE>/<REGION>/values.yaml in the GitOps repository.
+          enum:
+            - prod
+            - staging
+          enumNames:
+            - Production
+            - Staging
+          default: staging
+
+        region:
+          title: Region
+          type: string
+          # CONFIGURABLE: the region directory inside the values hierarchy.
+          # For AWS: [eu-west-1, eu-central-1, us-east-1]
+          enum:
+            - dus6
+          enumNames:
+            - 'Düsseldorf (dus6)'
+          default: dus6
+
+        changeId:
+          title: Change identifier
+          type: string
+          description: |
+            Short identifier used in the branch name and commit message
+            (e.g. a ticket id such as ops-1234). Lowercase, digits and hyphens.
+          pattern: '^[a-z0-9][a-z0-9-]*$'
+          maxLength: 40
+          ui:placeholder: 'ops-1234'
+
+        pushMode:
+          title: How to deliver the change
+          type: string
+          enum:
+            - push
+            - merge-request
+          enumNames:
+            - Commit and push directly to the target branch
+            - Open a merge request for review
+          default: push
+
+    # ---------------------------------------------------------------------------
+    # STEP 3: GitOps repository coordinates
+    # ---------------------------------------------------------------------------
+    - title: GitOps repository
+      description: Repository holding the Helm values files that ArgoCD syncs from.
+      required: [repoHost, repoOwner, repoName, repoBranch, helmPathPrefix]
+      properties:
+        repoHost:
+          title: Git host
+          type: string
+          description: Host as registered in the Backstage integrations config.
+          default: gitlab.phoenix.net-digital.com
+
+        repoOwner:
+          title: Owner / group
+          type: string
+          description: GitLab group or subgroup path (e.g. platform/gitops).
+
+        repoName:
+          title: Repository name
+          type: string
+
+        repoBranch:
+          title: Target branch
+          type: string
+          description: Branch the values files are read from and written back to.
+          default: main
+
+        helmPathPrefix:
+          title: Helm charts directory
+          type: string
+          description: |
+            Directory inside the repository that contains the per-application Helm
+            charts. The values file is resolved as
+            <prefix>/<app>/values/<stage>/<region>/values.yaml
+          default: helm
+
+  steps:
+    # ---------------------------------------------------------------------------
+    # Guard rails. The scaffolder has no dedicated "fail" action, so these steps
+    # intentionally point `fetch:plain` at a non-existent path: the step aborts
+    # the task with an error whose name explains what went wrong.
+    # ---------------------------------------------------------------------------
+    - id: guard-nothing-selected
+      name: 'VALIDATION FAILED: no application was selected'
+      if: ${{ (parameters.applications | selectattr('selected') | list | length) == 0 }}
+      action: fetch:plain
+      input:
+        url: ./validation-error/no-application-selected
+
+    - id: guard-missing-version
+      name: 'VALIDATION FAILED: a selected application has no version'
+      if: ${{ (parameters.applications | selectattr('selected') | rejectattr('version') | list | length) > 0 }}
+      action: fetch:plain
+      input:
+        url: ./validation-error/selected-application-without-version
+
+    - id: log-plan
+      name: Log the planned changes
+      action: debug:log
+      input:
+        message: |
+          Repository: ${{ parameters.repoHost }}/${{ parameters.repoOwner }}/${{ parameters.repoName }} (branch ${{ parameters.repoBranch }})
+          Stage: ${{ parameters.stage }}
+          Region: ${{ parameters.region }}
+          Delivery: ${{ parameters.pushMode }}
+          Applications to update: ${{ parameters.applications | selectattr('selected') | list | length }}
+
+    - id: log-selection
+      name: Log each selected application
+      each: ${{ parameters.applications | selectattr('selected') | list }}
+      action: debug:log
+      input:
+        message: '${{ each.value.name }} -> deployment.image.tag = ${{ each.value.version }}'
+
+    # ---------------------------------------------------------------------------
+    # Checkout: fetch only the values files that are going to be modified, so the
+    # resulting commit touches nothing else.
+    # ---------------------------------------------------------------------------
+    - id: fetch-values-files
+      name: Fetch the values files from the GitOps repository
+      each: ${{ parameters.applications | selectattr('selected') | list }}
+      action: fetch:plain:file
+      input:
+        url: https://${{ parameters.repoHost }}/${{ parameters.repoOwner }}/${{ parameters.repoName }}/-/blob/${{ parameters.repoBranch }}/${{ parameters.helmPathPrefix }}/${{ each.value.name }}/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml
+        targetPath: ./${{ parameters.helmPathPrefix }}/${{ each.value.name }}/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml
+
+    # ---------------------------------------------------------------------------
+    # Edit: set deployment.image.tag in each fetched values file.
+    #
+    # Requires @roadiehq/scaffolder-backend-module-utils in the Backstage backend.
+    # The values files nest everything under the application key, e.g.
+    #   my-app:
+    #     deployment:
+    #       image:
+    #         tag: "1.0.0"
+    # The JSONata transform below rewrites `tag` for every top-level key that has
+    # a deployment.image block, which keeps working even if the top-level key does
+    # not exactly match the directory name.
+    # ---------------------------------------------------------------------------
+    - id: update-image-tag
+      name: Update deployment.image.tag
+      each: ${{ parameters.applications | selectattr('selected') | list }}
+      action: roadiehq:utils:jsonata:yaml:transform
+      input:
+        path: ./${{ parameters.helmPathPrefix }}/${{ each.value.name }}/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml
+        expression: '$ ~> |*.deployment.image|{"tag": "${{ each.value.version }}"}|'
+
+    # Alternative if the Roadie utils module is not installed - plain text
+    # replacement of the tag line (works because each values file contains a
+    # single deployment.image block):
+    #
+    # - id: update-image-tag-fallback
+    #   name: Update deployment.image.tag (regex fallback)
+    #   each: ${{ parameters.applications | selectattr('selected') | list }}
+    #   action: roadiehq:utils:fs:replace
+    #   input:
+    #     files:
+    #       - file: ./${{ parameters.helmPathPrefix }}/${{ each.value.name }}/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml
+    #         find: '(?m)^(\s{6}tag:\s*).*$'
+    #         replaceWith: '$1"${{ each.value.version }}"'
+    #         matchRegex: true
+
+    # ---------------------------------------------------------------------------
+    # Deliver: direct commit + push, or a merge request.
+    # ---------------------------------------------------------------------------
+    - id: push-to-branch
+      name: Commit and push to the target branch
+      if: ${{ parameters.pushMode === 'push' }}
+      # NOTE: input field names come from @backstage/plugin-scaffolder-backend-module-gitlab.
+      # Older releases of that module name the branch input `branch` instead of
+      # `branchName` - check the version installed in your backend.
+      action: gitlab:repo:push
+      input:
+        repoUrl: '${{ parameters.repoHost }}?owner=${{ parameters.repoOwner }}&repo=${{ parameters.repoName }}'
+        branchName: ${{ parameters.repoBranch }}
+        commitMessage: 'chore(${{ parameters.stage }}): bump image tags [${{ parameters.changeId }}]'
+        sourcePath: .
+
+    - id: create-merge-request
+      name: Open a merge request
+      if: ${{ parameters.pushMode === 'merge-request' }}
+      action: publish:gitlab:merge-request
+      input:
+        repoUrl: '${{ parameters.repoHost }}?owner=${{ parameters.repoOwner }}&repo=${{ parameters.repoName }}'
+        branchName: 'chore/bump-versions-${{ parameters.stage }}-${{ parameters.changeId }}'
+        targetBranchName: ${{ parameters.repoBranch }}
+        title: 'chore(${{ parameters.stage }}): bump image tags [${{ parameters.changeId }}]'
+        sourcePath: .
+        commitAction: update
+        description: |
+          Automated version bump for stage **${{ parameters.stage }}** / region **${{ parameters.region }}**.
+
+          Updated `deployment.image.tag` for:
+          {% for app in parameters.applications | selectattr('selected') | list %}
+          - `${{ app.name }}` -> `${{ app.version }}`
+          {% endfor %}
+
+  output:
+    links:
+      # Only populated when the merge request path was taken; in direct-push mode
+      # the merge request step is skipped and this link resolves to nothing.
+      - title: Review the merge request
+        url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}
+    text:
+      - title: Versions updated
+        content: |
+          Stage **${{ parameters.stage }}**, region **${{ parameters.region }}**.
+
+          {% for app in parameters.applications | selectattr('selected') | list %}
+          - `${{ app.name }}` -> `${{ app.version }}`
+          {% endfor %}
+
+          **Next steps:**
+          1. Verify the commit / merge request diff.
+          2. ArgoCD picks up the change on the next sync and rolls out the new image tags.
