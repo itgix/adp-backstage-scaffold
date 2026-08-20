@@ -8,6 +8,10 @@ metadata:
     each of them and pick the target stage. The automation reads the matching Helm
     values file from the GitOps repository, updates `deployment.image.tag`, pushes
     the change on a new branch and opens a merge request against main.
+
+    Backend prerequisite: the `roadiehq:utils:fs:replace` action, from
+    `@roadiehq/scaffolder-backend-module-utils`, must be registered in the
+    scaffolder backend. Everything else used here is a built-in action.
   tags:
     - argocd
     - gitops
@@ -46,6 +50,35 @@ spec:
             # Each block is spelled out in full on purpose: YAML anchors/merge
             # keys are not guaranteed to be expanded by the parser reading this
             # template, and a silently half-expanded schema would break the form.
+            phoenix-alerting:
+              title: phoenix-alerting
+              type: object
+              properties:
+                selected:
+                  title: Update
+                  type: boolean
+                  default: false
+                version:
+                  title: New image tag
+                  type: string
+                  description: 'e.g. v0.1.5'
+                  maxLength: 128
+                  ui:placeholder: 'required when Update is ticked'
+              # VALIDATION: a ticked application must carry a non-empty, well
+              # formed image tag. Unticked entries stay unconstrained.
+              if:
+                properties:
+                  selected:
+                    const: true
+                required: [selected]
+              then:
+                properties:
+                  version:
+                    type: string
+                    minLength: 1
+                    pattern: '^[A-Za-z0-9][A-Za-z0-9._+-]*$'
+                required: [version]
+
             phoenix-bridge:
               title: phoenix-bridge
               type: object
@@ -57,11 +90,36 @@ spec:
                 version:
                   title: New image tag
                   type: string
-                  description: 'e.g. v0.1.34'
+                  description: 'e.g. v0.1.39'
                   maxLength: 128
                   ui:placeholder: 'required when Update is ticked'
-              # VALIDATION: a ticked application must carry a non-empty, well
-              # formed image tag. Unticked entries stay unconstrained.
+              if:
+                properties:
+                  selected:
+                    const: true
+                required: [selected]
+              then:
+                properties:
+                  version:
+                    type: string
+                    minLength: 1
+                    pattern: '^[A-Za-z0-9][A-Za-z0-9._+-]*$'
+                required: [version]
+
+            phoenix-clearing:
+              title: phoenix-clearing
+              type: object
+              properties:
+                selected:
+                  title: Update
+                  type: boolean
+                  default: false
+                version:
+                  title: New image tag
+                  type: string
+                  description: 'e.g. v0.1.16'
+                  maxLength: 128
+                  ui:placeholder: 'required when Update is ticked'
               if:
                 properties:
                   selected:
@@ -86,7 +144,7 @@ spec:
                 version:
                   title: New image tag
                   type: string
-                  description: 'e.g. v0.1.34'
+                  description: 'e.g. v0.1.40'
                   maxLength: 128
                   ui:placeholder: 'required when Update is ticked'
               if:
@@ -113,7 +171,61 @@ spec:
                 version:
                   title: New image tag
                   type: string
-                  description: 'e.g. v0.1.34'
+                  description: 'e.g. v0.1.32'
+                  maxLength: 128
+                  ui:placeholder: 'required when Update is ticked'
+              if:
+                properties:
+                  selected:
+                    const: true
+                required: [selected]
+              then:
+                properties:
+                  version:
+                    type: string
+                    minLength: 1
+                    pattern: '^[A-Za-z0-9][A-Za-z0-9._+-]*$'
+                required: [version]
+
+            phoenix-ingestor:
+              title: phoenix-ingestor
+              type: object
+              properties:
+                selected:
+                  title: Update
+                  type: boolean
+                  default: false
+                version:
+                  title: New image tag
+                  type: string
+                  description: 'e.g. v0.1.18'
+                  maxLength: 128
+                  ui:placeholder: 'required when Update is ticked'
+              if:
+                properties:
+                  selected:
+                    const: true
+                required: [selected]
+              then:
+                properties:
+                  version:
+                    type: string
+                    minLength: 1
+                    pattern: '^[A-Za-z0-9][A-Za-z0-9._+-]*$'
+                required: [version]
+
+            phoenix-invoicing:
+              title: phoenix-invoicing
+              type: object
+              properties:
+                selected:
+                  title: Update
+                  type: boolean
+                  default: false
+                version:
+                  title: New image tag
+                  type: string
+                  description: 'e.g. v0.1.6'
                   maxLength: 128
                   ui:placeholder: 'required when Update is ticked'
               if:
@@ -140,7 +252,88 @@ spec:
                 version:
                   title: New image tag
                   type: string
-                  description: 'e.g. v0.1.34'
+                  description: 'e.g. v0.1.74'
+                  maxLength: 128
+                  ui:placeholder: 'required when Update is ticked'
+              if:
+                properties:
+                  selected:
+                    const: true
+                required: [selected]
+              then:
+                properties:
+                  version:
+                    type: string
+                    minLength: 1
+                    pattern: '^[A-Za-z0-9][A-Za-z0-9._+-]*$'
+                required: [version]
+
+            phoenix-pricing:
+              title: phoenix-pricing
+              type: object
+              properties:
+                selected:
+                  title: Update
+                  type: boolean
+                  default: false
+                version:
+                  title: New image tag
+                  type: string
+                  description: 'e.g. v0.1.12'
+                  maxLength: 128
+                  ui:placeholder: 'required when Update is ticked'
+              if:
+                properties:
+                  selected:
+                    const: true
+                required: [selected]
+              then:
+                properties:
+                  version:
+                    type: string
+                    minLength: 1
+                    pattern: '^[A-Za-z0-9][A-Za-z0-9._+-]*$'
+                required: [version]
+
+            phoenix-reporting:
+              title: phoenix-reporting
+              type: object
+              properties:
+                selected:
+                  title: Update
+                  type: boolean
+                  default: false
+                version:
+                  title: New image tag
+                  type: string
+                  description: 'e.g. v0.1.5'
+                  maxLength: 128
+                  ui:placeholder: 'required when Update is ticked'
+              if:
+                properties:
+                  selected:
+                    const: true
+                required: [selected]
+              then:
+                properties:
+                  version:
+                    type: string
+                    minLength: 1
+                    pattern: '^[A-Za-z0-9][A-Za-z0-9._+-]*$'
+                required: [version]
+
+            phoenix-risk:
+              title: phoenix-risk
+              type: object
+              properties:
+                selected:
+                  title: Update
+                  type: boolean
+                  default: false
+                version:
+                  title: New image tag
+                  type: string
+                  description: 'e.g. v0.1.10'
                   maxLength: 128
                   ui:placeholder: 'required when Update is ticked'
               if:
@@ -167,7 +360,7 @@ spec:
                 version:
                   title: New image tag
                   type: string
-                  description: 'e.g. v0.1.34'
+                  description: 'e.g. v0.1.35'
                   maxLength: 128
                   ui:placeholder: 'required when Update is ticked'
               if:
@@ -194,7 +387,7 @@ spec:
                 version:
                   title: New image tag
                   type: string
-                  description: 'e.g. v0.1.15'
+                  description: 'e.g. v0.1.16'
                   maxLength: 128
                   ui:placeholder: 'required when Update is ticked'
               if:
@@ -260,12 +453,19 @@ spec:
       name: 'VALIDATION FAILED: no application was selected'
       # CONFIGURABLE: extend this list when adding an application above.
       if: >-
-        ${{ not (parameters.applications['phoenix-bridge'].selected
-              or parameters.applications['phoenix-coreflow'].selected
-              or parameters.applications['phoenix-gateway'].selected
-              or parameters.applications['phoenix-orbit'].selected
-              or parameters.applications['phoenix-router'].selected
-              or parameters.applications['connector-token'].selected) }}
+        ${{ not (parameters.applications['phoenix-alerting'].selected
+        or parameters.applications['phoenix-bridge'].selected
+        or parameters.applications['phoenix-clearing'].selected
+        or parameters.applications['phoenix-coreflow'].selected
+        or parameters.applications['phoenix-gateway'].selected
+        or parameters.applications['phoenix-ingestor'].selected
+        or parameters.applications['phoenix-invoicing'].selected
+        or parameters.applications['phoenix-orbit'].selected
+        or parameters.applications['phoenix-pricing'].selected
+        or parameters.applications['phoenix-reporting'].selected
+        or parameters.applications['phoenix-risk'].selected
+        or parameters.applications['phoenix-router'].selected
+        or parameters.applications['connector-token'].selected) }}
       action: fetch:plain
       input:
         url: ./validation-error/no-application-was-selected
