@@ -442,6 +442,28 @@ spec:
           maxLength: 200
           ui:placeholder: 'e.g. OPS-1234 or "weekly release"'
 
+        branchSuffix:
+          title: Branch name (optional)
+          type: string
+          description: >-
+            Last part of the branch name, which is always
+            bump/<stage>-<this value>. Leave empty to use the first 8 characters
+            of the scaffolder task id instead. Reusing a value that still has an
+            open branch makes the merge request step fail, so pick something new
+            per release.
+          maxLength: 40
+          # Letters, digits, underscore and hyphen only, and it has to start and
+          # end with a letter or digit. That rules out every branch name git
+          # rejects (leading hyphen, trailing dot, "..", spaces, path separators)
+          # without needing to reproduce the full git ref grammar here.
+          #
+          # The empty alternative matters: the field is optional, but a text
+          # field that was typed into and then cleared is submitted as an empty
+          # string, and without `^$` the pattern would block the form on a value
+          # the user cannot see.
+          pattern: '^$|^[A-Za-z0-9]([A-Za-z0-9_-]*[A-Za-z0-9])?$'
+          ui:placeholder: 'e.g. ops-1234 (blank = short task id)'
+
   steps:
     # ---------------------------------------------------------------------------
     # Guard rails.
@@ -519,7 +541,6 @@ spec:
     # Edit: rewrite the YAML anchor that defines the application version.
 
     # Requires @roadiehq/scaffolder-backend-module-utils in the backend.
-    
     # Notes:
     # - The values file must already use the anchor pattern. A file that still
     #   hardcodes its tags contains no `&` anchor, so this step leaves it
@@ -553,7 +574,26 @@ spec:
           ${{ environment.secrets.repoHost | default('gitlab.phoenix.net-digital.com') }}/?owner=${{
           environment.secrets.repoOwner | default('phoenix/infrastructure') }}&repo=${{
           environment.secrets.repoName | default('phnx-argo-apps') }}
-        branchName: 'bump/${{ parameters.stage }}-${{ task.id }}'
+        # The scaffolder exposes the task id as `context.task.id`, a random UUID
+        # per task. Note the `context.` prefix: the shorter `task.id` renders
+        # empty, which makes every run reuse the same branch name and fail with
+        # "the branch already exists" from the second run onwards.
+        #
+        # Only the first 8 characters are used to keep the branch list readable.
+        # That is enough entropy in practice, and a collision would fail loudly
+        # on branch creation rather than corrupt anything. The apps and versions
+        # in the release are listed in the merge request title and description,
+        # so they deliberately do not appear in the branch name - a single branch
+        # can carry several applications at different versions.
+        #
+        # `branchSuffix` from the form wins when it is filled in. The check is an
+        # {% if %} block rather than the `default` filter because `default` only
+        # substitutes on undefined values, and an optional text field that the
+        # user typed into and then cleared arrives as an empty string.
+        branchName: >-
+          bump/${{ parameters.stage }}-{% if parameters.branchSuffix %}${{
+          parameters.branchSuffix }}{% else %}${{ context.task.id | truncate(8,
+          true, "") }}{% endif %}
         targetBranchName: ${{ environment.secrets.repoBranch | default('main') }}
         title: 'chore(${{ parameters.stage }}): bump application versions'
         sourcePath: .
