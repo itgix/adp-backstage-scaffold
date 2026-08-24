@@ -4,10 +4,11 @@ metadata:
   name: bulk-application-version-update
   title: Bulk Update Application Versions
   description: |
-    Tick the applications you want to release, type the new container image tag for
-    each of them and pick the target stage. The automation reads the matching Helm
-    values file from the GitOps repository, updates `deployment.image.tag`, pushes
-    the change on a new branch and opens a merge request against main.
+    Tick the applications you want to release, type the new version for each of
+    them and pick the target stage. The automation reads the matching Helm values
+    file from the GitOps repository and rewrites the single `version:` anchor that
+    the deployment and job image tags alias, then pushes the change on a new branch
+    and opens a merge request against main.
 
     Backend prerequisite: the `roadiehq:utils:fs:replace` action, from
     `@roadiehq/scaffolder-backend-module-utils`, must be registered in the
@@ -40,7 +41,7 @@ spec:
     - title: Applications and versions
       description: |
         Tick "Update" for every application you want to release and fill in the new
-        image tag next to it. Applications left unticked are ignored, their version
+        version next to it. Applications left unticked are ignored, their version
         field can stay empty.
       properties:
         applications:
@@ -59,7 +60,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.5'
                   maxLength: 128
@@ -88,7 +89,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.39'
                   maxLength: 128
@@ -115,7 +116,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.16'
                   maxLength: 128
@@ -142,7 +143,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.40'
                   maxLength: 128
@@ -169,7 +170,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.32'
                   maxLength: 128
@@ -196,7 +197,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.18'
                   maxLength: 128
@@ -223,7 +224,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.6'
                   maxLength: 128
@@ -250,7 +251,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.74'
                   maxLength: 128
@@ -277,7 +278,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.12'
                   maxLength: 128
@@ -304,7 +305,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.5'
                   maxLength: 128
@@ -331,7 +332,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.10'
                   maxLength: 128
@@ -358,7 +359,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.35'
                   maxLength: 128
@@ -385,7 +386,7 @@ spec:
                   type: boolean
                   default: false
                 version:
-                  title: New image tag
+                  title: New version
                   type: string
                   description: 'e.g. v0.1.16'
                   maxLength: 128
@@ -488,7 +489,7 @@ spec:
         message: |
           Target: ${{ parameters.stage }} / ${{ parameters.region }}
           Reference: ${{ parameters.changeReference }}
-          Updating deployment.image.tag for:
+          Updating the version anchor for:
           {% for app, cfg in parameters.applications %}{% if cfg.selected %}  - ${{ app }} -> ${{ cfg.version }}
           {% endif %}{% endfor %}
 
@@ -515,20 +516,20 @@ spec:
         targetPath: ./helm/${{ each.key }}/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml
 
     # ---------------------------------------------------------------------------
-    # Edit: rewrite deployment.image.tag in place.
-    #
+    # Edit: rewrite the YAML anchor that defines the application version.
+
     # Requires @roadiehq/scaffolder-backend-module-utils in the backend.
-    # A targeted regex is used instead of a YAML parse/serialize round trip so
-    # that comments, quoting and formatting survive and the merge request diff is
-    # a single line per application.
-    #
-    # The pattern walks deployment: -> image: -> the first tag: below it, so
-    # unrelated tag: keys elsewhere in the file are left alone. Note that the
-    # action compiles the expression with the `g` flag only (no `m`), hence the
-    # explicit \n handling instead of ^/$ anchors.
+    
+    # Notes:
+    # - The values file must already use the anchor pattern. A file that still
+    #   hardcodes its tags contains no `&` anchor, so this step leaves it
+    #   unchanged and the application is silently absent from the diff.
+    # - A trailing comment on the version line is replaced along with the value.
+    # - The action compiles the expression with the `g` flag only (no `m`), hence
+    #   the explicit \n handling instead of ^/$ anchors.
     # ---------------------------------------------------------------------------
-    - id: update-image-tag
-      name: Update deployment.image.tag
+    - id: update-version-anchor
+      name: Update the version anchor
       each: ${{ parameters.applications }}
       if: ${{ each.value.selected }}
       action: roadiehq:utils:fs:replace
@@ -536,7 +537,7 @@ spec:
         files:
           - file: ./helm/${{ each.key }}/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml
             matchRegex: true
-            find: '(deployment:\s*\n(?:[^\n]*\n)*?\s*image:\s*\n(?:[^\n]*\n)*?\s+tag:\s*)[^\n]*'
+            find: '(\n[ \t]*version:[ \t]*&[A-Za-z0-9_.-]+[ \t]*)[^\n]*'
             replaceWith: '$1"${{ each.value.version }}"'
 
     # ---------------------------------------------------------------------------
@@ -554,14 +555,17 @@ spec:
           environment.secrets.repoName | default('phnx-argo-apps') }}
         branchName: 'bump/${{ parameters.stage }}-${{ task.id }}'
         targetBranchName: ${{ environment.secrets.repoBranch | default('main') }}
-        title: 'chore(${{ parameters.stage }}): bump application image tags'
+        title: 'chore(${{ parameters.stage }}): bump application versions'
         sourcePath: .
         commitAction: auto
         removeSourceBranch: true
         description: |
-          Automated image tag bump for **${{ parameters.stage }}** / **${{ parameters.region }}**.
+          Automated version bump for **${{ parameters.stage }}** / **${{ parameters.region }}**.
 
-          | Application | New image tag |
+          Only the `version:` anchor of each application is changed; the
+          `deployment` and `jobs` image tags alias it and stay as they are.
+
+          | Application | New version |
           | --- | --- |
           {% for app, cfg in parameters.applications %}{% if cfg.selected %}| `${{ app }}` | `${{ cfg.version }}` |
           {% endif %}{% endfor %}
@@ -575,7 +579,7 @@ spec:
       - title: Review the merge request and merge to deploy
         url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}
     text:
-      - title: Image tags updated
+      - title: Versions updated
         content: |
           Stage **${{ parameters.stage }}**, region **${{ parameters.region }}**.
 
@@ -583,5 +587,7 @@ spec:
           {% endif %}{% endfor %}
 
           **Next steps:**
-          1. Review the merge request diff - it should contain one changed line per application.
-          2. Merge it; ArgoCD picks the change up on the next sync and rolls out the new tags.
+          1. Review the merge request diff - it should contain exactly one changed
+             `version:` line per application and nothing else.
+          2. Merge it; ArgoCD picks the change up on the next sync and rolls out the
+             new tags for the deployment and the jobs.
