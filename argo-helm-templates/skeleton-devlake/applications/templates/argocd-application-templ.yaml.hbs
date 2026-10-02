@@ -1,0 +1,89 @@
+{{- define "devlake.ingressClassName" -}}
+{{- $infraServices := .infraServices -}}
+{{- $cloud := default "aws" (index $infraServices "cloud") -}}
+{{- $className := ternary "gce" "alb" (eq $cloud "gcp") -}}
+{{- $className = default $className (index $infraServices "ingress_class_name") -}}
+{{- $cloudClassKey := printf "%s_ingress_class_name" $cloud -}}
+{{- default $className (index $infraServices $cloudClassKey) -}}
+{{- end -}}
+
+{{- define "devlake.ingressAnnotations" -}}
+{{- $infraServices := .infraServices -}}
+{{- $cloud := default "aws" (index $infraServices "cloud") -}}
+{{- $ingressClassName := include "devlake.ingressClassName" (dict "infraServices" $infraServices) -}}
+{{- $annotations := dict "external-dns.alpha.kubernetes.io/hostname" .host -}}
+{{- if eq $cloud "gcp" -}}
+{{- $_ := set $annotations "kubernetes.io/ingress.class" $ingressClassName -}}
+{{- $managedCertificatesEnabled := true -}}
+{{- if hasKey $infraServices "gcp_ingress_managed_certificates_enabled" -}}
+{{- $managedCertificatesEnabled = index $infraServices "gcp_ingress_managed_certificates_enabled" -}}
+{{- end -}}
+{{- if $managedCertificatesEnabled -}}
+{{- $_ := set $annotations "networking.gke.io/managed-certificates" "devlake" -}}
+{{- end -}}
+{{- $httpsRedirectEnabled := true -}}
+{{- if hasKey $infraServices "gcp_ingress_https_redirect_enabled" -}}
+{{- $httpsRedirectEnabled = index $infraServices "gcp_ingress_https_redirect_enabled" -}}
+{{- end -}}
+{{- if $httpsRedirectEnabled -}}
+{{- $_ := set $annotations "networking.gke.io/v1beta1.FrontendConfig" "devlake" -}}
+{{- end -}}
+{{- else -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/listen-ports" "[{\"HTTP\": 80}, {\"HTTPS\": 443}]" -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/scheme" "internet-facing" -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/ssl-redirect" "443" -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/target-type" "ip" -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/target-group-attributes" "stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400" -}}
+{{- end -}}
+{{- $commonAnnotations := default dict (index $infraServices "ingress_annotations") -}}
+{{- $cloudAnnotationsKey := printf "%s_ingress_annotations" $cloud -}}
+{{- $cloudAnnotations := default dict (index $infraServices $cloudAnnotationsKey) -}}
+{{- $annotations = mergeOverwrite $annotations $commonAnnotations $cloudAnnotations -}}
+{{- toYaml $annotations -}}
+{{- end -}}
+
+{{- if ne (index .Values "infra-services" "app_devlake_enabled") false }}
+{{- $infraServices := index .Values "infra-services" }}
+{% if values.hostname -%}
+{{- $devlakeHost := "${{ values.hostname }}" }}
+{%- else -%}
+{{- $devlakeHost := printf "%s-%s-devlake-%s.%s" (index $infraServices "project_name") (index $infraServices "region") (index $infraServices "environment") (index $infraServices "dns_main_domain") }}
+{%- endif %}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devlake
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  destination:
+    namespace: devlake
+    server: https://kubernetes.default.svc
+  project: 'applications'
+  source:
+    helm:
+      releaseName: devlake
+      valueFiles:
+      - ../applications/values/${{ values.stage }}/${{ values.region }}/infra-facts.yaml
+      - ../devlake/values.yaml
+      - ../devlake/values/${{ values.stage }}/${{ values.region }}/values.yaml
+      values: |
+        devlake:
+          ingress:
+            className: {{ include "devlake.ingressClassName" (dict "infraServices" $infraServices) }}
+            annotations:
+{{- include "devlake.ingressAnnotations" (dict "infraServices" $infraServices "host" $devlakeHost) | nindent 14 }}
+            hostname: {{ $devlakeHost }}
+    path: helm/devlake
+    repoURL: {{ index .Values "infra-services" "applications_destination_repo" }}
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - Replace=true
+  revisionHistoryLimit: 3
+{{- end }}

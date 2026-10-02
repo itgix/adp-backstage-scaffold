@@ -1,0 +1,41 @@
+{{- $infraServices := index .Values "infra-services" -}}
+{{- $cloud := default "aws" (index $infraServices "cloud") -}}
+{{- if eq $cloud "gcp" -}}
+{{- $managedCertificatesEnabled := true -}}
+{{- if hasKey $infraServices "gcp_ingress_managed_certificates_enabled" -}}
+{{- $managedCertificatesEnabled = index $infraServices "gcp_ingress_managed_certificates_enabled" -}}
+{{- end -}}
+{{- $httpsRedirectEnabled := true -}}
+{{- if hasKey $infraServices "gcp_ingress_https_redirect_enabled" -}}
+{{- $httpsRedirectEnabled = index $infraServices "gcp_ingress_https_redirect_enabled" -}}
+{{- end -}}
+{{- $defaultHost := printf "%s-%s-devlake-%s.%s" (index $infraServices "project_name") (index $infraServices "region") (index $infraServices "environment") (index $infraServices "dns_main_domain") -}}
+{{- $devlakeHost := default $defaultHost .Values.devlake.ingress.hostname -}}
+{{- if $managedCertificatesEnabled }}
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: devlake
+  namespace: devlake
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  domains:
+    - {{ $devlakeHost }}
+{{- end }}
+{{- if $httpsRedirectEnabled }}
+---
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: devlake
+  namespace: devlake
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  redirectToHttps:
+    enabled: true
+    responseCodeName: MOVED_PERMANENTLY_DEFAULT
+{{- end }}
+{{- end }}
