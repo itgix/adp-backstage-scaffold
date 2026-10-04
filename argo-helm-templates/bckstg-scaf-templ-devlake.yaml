@@ -1,0 +1,116 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: devlake
+  title: Apache DevLake
+  description: Installs Apache DevLake as an optional platform tool into the environment's applications GitOps repository. Adds the DevLake wrapper chart, its ArgoCD Application and, on GCP, the ingress resources, then opens a pull or merge request.
+  tags:
+    - devlake
+    - analytics
+    - devops
+    - platform-tool
+spec:
+  owner: platform-team
+  type: platform-tool
+
+  parameters:
+    - title: DevLake placement
+      required: [stage, region]
+      properties:
+        stage:
+          title: On which stage to deploy
+          type: string
+          description: Stage (e.g., 'dev' or 'staging' or 'prod').
+        region:
+          title: On which region will DevLake run
+          type: string
+          description: The cloud region (e.g., 'eu-west-2').
+        hostname:
+          title: Ingress hostname
+          type: string
+          description: Optional DNS name for the DevLake ingress.
+          ui:help: "Leave empty for <project_name>-<region>-devlake-<environment>.<dns_main_domain>"
+    - title: Git provider
+      properties:
+        git_provider:
+          title: Git provider of the applications repository
+          type: string
+          enum: [github, gitlab]
+          default: github
+
+  steps:
+    - id: fetch-base
+      name: Fetch and Render Template
+      action: fetch:template
+      input:
+        url: ./skeleton-devlake/
+        targetPath: ./helm/
+        values:
+          stage: ${{ parameters.stage }}
+          region: ${{ parameters.region }}
+          hostname: ${{ parameters.hostname }}
+
+    - id: rename-dirs
+      name: Rename the directories with the proper region and stage
+      action: fs:rename
+      input:
+        files:
+        # 1) deepest files FIRST (strip .hbs)
+        - from: helm/devlake/values/STAGE/REGION/values.yaml.hbs
+          to: helm/devlake/values/STAGE/REGION/values.yaml
+
+        - from: helm/devlake/templates/devlake-encryption-secret.yaml.hbs
+          to: helm/devlake/templates/devlake-encryption-secret.yaml
+
+        - from: helm/devlake/templates/gcp-ingress.yaml.hbs
+          to: helm/devlake/templates/gcp-ingress.yaml
+
+        - from: helm/devlake/values.yaml.hbs
+          to: helm/devlake/values.yaml
+
+        - from: helm/devlake/Chart.yaml.hbs
+          to: helm/devlake/Chart.yaml
+
+        # 2) argocd application template (already outside the devlake chart)
+        - from: helm/applications/templates/argocd-application-templ.yaml.hbs
+          to: helm/applications/templates/application-devlake.yaml
+
+        # 3) REGION directory
+        - from: helm/devlake/values/STAGE/REGION
+          to: helm/devlake/values/STAGE/${{ parameters.region }}
+
+        # 4) STAGE directory
+        - from: helm/devlake/values/STAGE
+          to: helm/devlake/values/${{ parameters.stage }}
+
+    - id: create-pull-request
+      name: Create Feature Branch and Pull Request
+      if: ${{ parameters.git_provider == 'github' }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: 'github.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/devlake'
+        title: 'New platform tool: DevLake'
+        sourcePath: .
+        description: 'This PR adds Apache DevLake as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.'
+
+    - id: create-merge-request
+      name: Create Feature Branch and Merge Request
+      if: ${{ parameters.git_provider == 'gitlab' }}
+      action: publish:gitlab:merge-request
+      input:
+        repoUrl: 'gitlab.itgix.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/devlake'
+        targetBranchName: 'main'
+        title: 'New platform tool: DevLake'
+        sourcePath: .
+        description: 'This MR adds Apache DevLake as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.'
+
+  output:
+    links:
+      - title: Review the Pull Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'github' }}
+        url: ${{ steps['create-pull-request'].output.remoteUrl }}
+      - title: Review the Merge Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'gitlab' }}
+        url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}

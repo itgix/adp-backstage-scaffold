@@ -1,0 +1,9 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: adp-catalog-applications
+  description: Optional platform applications installable from the Backstage catalog (DevLake, ...). The scaffolder forms are registered separately.
+spec:
+  type: url
+  targets:
+    - ./argo-helm-templates/bckstg-scaf-templ-devlake.yaml
