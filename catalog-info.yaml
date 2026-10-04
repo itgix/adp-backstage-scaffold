@@ -1,11 +1,9 @@
 apiVersion: backstage.io/v1alpha1
 kind: Location
 metadata:
-  name: adp-scaffolder-templates
-  description: ADP Backstage scaffolder templates and optional platform tools. Register this one file in Backstage; add new catalog items here.
+  name: adp-catalog-applications
+  description: Optional platform applications installable from the Backstage catalog (DevLake, ...). The scaffolder forms are registered separately.
 spec:
   type: url
   targets:
-    - ./argo-helm-templates/bckstg-scaf-templ-argocd-app-github.yaml
-    - ./argo-helm-templates/bckstg-scaf-templ-argocd-app-gitlab.yaml
     - ./argo-helm-templates/bckstg-scaf-templ-devlake.yaml

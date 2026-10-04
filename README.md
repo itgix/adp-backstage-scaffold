@@ -10,27 +10,36 @@ All templates live in `argo-helm-templates/`.
 - `bckstg-scaf-templ-argocd-app-gitlab.yaml` - the same, merge request on GitLab.
 - `bckstg-scaf-templ-devlake.yaml` - Apache DevLake as an optional platform tool, GitHub or GitLab chosen by a parameter.
 
-Other files in the directory (the Phoenix variant, the dynamic environment variables template, the bulk version update and the DevOps agent request) are not registered in the catalog.
+The first two are scaffolder forms, registered individually in Backstage; the third is an optional platform application listed in `catalog-info.yaml`. Other files in the directory (the Phoenix variant, the dynamic environment variables template, the bulk version update and the DevOps agent request) are not registered in the catalog.
 
 ## Registering the templates in Backstage
 
-Register one location, `catalog-info.yaml` at the repository root. It is a `Location` that lists every template to load. Add this to the Backstage `app-config.yaml`:
+Two kinds of catalog entries are registered, in `catalog.locations` of the Backstage `app-config.yaml`:
+
+- The scaffolder forms (`bckstg-scaf-templ-argocd-app-github.yaml`, `bckstg-scaf-templ-argocd-app-gitlab.yaml`) are registered one by one, each with `rules: [{allow: [Template]}]`.
+- The optional platform applications are registered through one `Location`, `catalog-info.yaml` at the repository root, with `rules: [{allow: [Location, Template]}]`:
 
 ```yaml
 catalog:
-  rules:
-    - allow: [Location, Template]
   locations:
     - type: url
+      target: https://github.com/itgix/adp-backstage-scaffold/blob/main/argo-helm-templates/bckstg-scaf-templ-argocd-app-github.yaml
+      rules:
+        - allow: [Template]
+    - type: url
+      target: https://github.com/itgix/adp-backstage-scaffold/blob/main/argo-helm-templates/bckstg-scaf-templ-argocd-app-gitlab.yaml
+      rules:
+        - allow: [Template]
+    - type: url
       target: https://github.com/itgix/adp-backstage-scaffold/blob/main/catalog-info.yaml
+      rules:
+        - allow: [Location, Template]
 ```
-
-Equivalent per-location form: `rules: [{allow: [Location, Template]}]` next to the `type: url` entry. Do not register the individual template files separately.
 
 ## Adding a new catalog item
 
-1. Add the template file (and its skeleton directory) under `argo-helm-templates/`.
-2. Add one line to `spec.targets` in `catalog-info.yaml`, for example `- ./argo-helm-templates/bckstg-scaf-templ-<name>.yaml`.
+- A new optional platform application: add the template file and its skeleton directory under `argo-helm-templates/`, then add one line to `spec.targets` in `catalog-info.yaml`, for example `- ./argo-helm-templates/bckstg-scaf-templ-<name>.yaml`. No change in the Backstage configuration is needed.
+- A new scaffolder form: add the template file and register it as its own `catalog.locations` entry in the Backstage configuration.
 
 Backstage picks up the change on its next catalog refresh.
 
