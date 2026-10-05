@@ -15,16 +15,21 @@ agent:
 minio:
   enabled: false
 
+# NOTE on nesting: the upstream chart is a dependency aliased as `pyroscope`,
+# and its own values live under a top-level `pyroscope:` key. So keys for the
+# Pyroscope component sit at `pyroscope.pyroscope.*` (the outer key selects the
+# subchart, the inner key is the chart's own `pyroscope` block).
 pyroscope:
-  persistence:
-    # Whether a PersistentVolume is used (structural). size and storageClassName
-    # are set elsewhere: size per environment, storageClassName per cloud by the
-    # ArgoCD Application.
-    enabled: true
+  pyroscope:
+    persistence:
+      # Whether a PersistentVolume is used (structural). size and
+      # storageClassName are set elsewhere: size per environment,
+      # storageClassName per cloud by the ArgoCD Application.
+      enabled: true
 
-  serviceAccount:
-    create: true
-    name: pyroscope
+    serviceAccount:
+      create: true
+      name: pyroscope
 
 # replicaCount, persistence.size and resources are configured per environment in
 # ./values/<stage>/<region>/values.yaml.

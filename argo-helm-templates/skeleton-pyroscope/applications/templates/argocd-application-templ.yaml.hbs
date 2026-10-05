@@ -44,27 +44,28 @@ spec:
       - ../pyroscope/values/${{ values.stage }}/${{ values.region }}/values.yaml
       values: |
         pyroscope:
-          persistence:
-            storageClassName: {{ $storageClass }}
-          serviceAccount:
-            annotations:
-              {{ $saAnnotationKey }}: {{ $saAnnotationValue }}
-          structuredConfig:
-            storage:
+          pyroscope:
+            persistence:
+              storageClassName: {{ $storageClass }}
+            serviceAccount:
+              annotations:
+                {{ $saAnnotationKey }}: {{ $saAnnotationValue }}
+            structuredConfig:
+              storage:
 {{- if eq $cloud "gcp" }}
-              backend: gcs
-              gcs:
-                bucket_name: {{ $bucket }}
+                backend: gcs
+                gcs:
+                  bucket_name: {{ $bucket }}
 {{- else }}
-              backend: s3
-              s3:
-                bucket_name: {{ $bucket }}
-                endpoint: s3.dualstack.{{ $region }}.amazonaws.com
-                region: {{ $region }}
-                insecure: false
-                native_aws_auth_enabled: true
-                sse:
-                  type: SSE-S3
+                backend: s3
+                s3:
+                  bucket_name: {{ $bucket }}
+                  endpoint: s3.dualstack.{{ $region }}.amazonaws.com
+                  region: {{ $region }}
+                  insecure: false
+                  native_aws_auth_enabled: true
+                  sse:
+                    type: SSE-S3
 {{- end }}
     path: helm/pyroscope
     repoURL: {{ index .Values "infra-services" "applications_destination_repo" }}
