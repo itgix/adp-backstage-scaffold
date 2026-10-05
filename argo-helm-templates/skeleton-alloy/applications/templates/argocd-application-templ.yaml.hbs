@@ -15,9 +15,9 @@ spec:
     helm:
       releaseName: alloy
       valueFiles:
-      - ../applications/values/${{ values.stage }}/${{ values.region }}/infra-facts.yaml
+      - ../applications/values/{{ index .Values "infra-services" "environment" }}/{{ index .Values "infra-services" "region" }}/infra-facts.yaml
       - ../alloy/values.yaml
-      - ../alloy/values/${{ values.stage }}/${{ values.region }}/values.yaml
+      - ../alloy/values/{{ index .Values "infra-services" "environment" }}/{{ index .Values "infra-services" "region" }}/values.yaml
     path: helm/alloy
     repoURL: {{ index .Values "infra-services" "applications_destination_repo" }}
     targetRevision: HEAD

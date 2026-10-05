@@ -15,9 +15,9 @@ spec:
     helm:
       releaseName: pyroscope
       valueFiles:
-      - ../applications/values/${{ values.stage }}/${{ values.region }}/infra-facts.yaml
+      - ../applications/values/{{ index .Values "infra-services" "environment" }}/{{ index .Values "infra-services" "region" }}/infra-facts.yaml
       - ../pyroscope/values.yaml
-      - ../pyroscope/values/${{ values.stage }}/${{ values.region }}/values.yaml
+      - ../pyroscope/values/{{ index .Values "infra-services" "environment" }}/{{ index .Values "infra-services" "region" }}/values.yaml
     path: helm/pyroscope
     repoURL: {{ index .Values "infra-services" "applications_destination_repo" }}
     targetRevision: HEAD
