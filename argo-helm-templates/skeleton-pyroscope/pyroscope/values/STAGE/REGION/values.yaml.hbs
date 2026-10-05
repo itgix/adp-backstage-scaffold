@@ -1,12 +1,22 @@
 # Per-environment configuration for Pyroscope on stage ${{ values.stage }}, region ${{ values.region }}.
-# Values here override ../../../values.yaml. Keys live under the upstream chart alias `pyroscope`.
-# Tune these per environment (e.g. larger size/resources/replicas in prod).
+# Values here override ../../../values.yaml.
+#
+# NESTING: the upstream chart is a dependency aliased as `pyroscope`, and its
+# own values live under a top-level `pyroscope:` key. So every setting for the
+# Pyroscope component sits at `pyroscope.pyroscope.*` (the outer key selects the
+# subchart, the inner key is the chart's own `pyroscope` block).
+#
+# Configure object storage and the service-account identity for THIS environment
+# below. Uncomment and fill in the block for your cloud. Each environment has its
+# own bucket, identity and storage class.
 pyroscope:
   pyroscope:
     replicaCount: 1
 
     persistence:
       size: 20Gi
+      # Storage class for the PVC. AWS example: gp3. GCP example: standard-rwo.
+      # storageClassName: gp3
 
     resources:
       limits:
@@ -14,3 +24,29 @@ pyroscope:
       requests:
         cpu: 500m
         memory: 2Gi
+
+    # --- AWS (S3 + IRSA) -----------------------------------------------------
+    # serviceAccount:
+    #   annotations:
+    #     eks.amazonaws.com/role-arn: arn:aws:iam::<account_id>:role/<role-name>
+    # structuredConfig:
+    #   storage:
+    #     backend: s3
+    #     s3:
+    #       bucket_name: <s3-bucket-name>
+    #       endpoint: s3.dualstack.${{ values.region }}.amazonaws.com
+    #       region: ${{ values.region }}
+    #       insecure: false
+    #       native_aws_auth_enabled: true
+    #       sse:
+    #         type: SSE-S3
+
+    # --- GCP (GCS + Workload Identity) ---------------------------------------
+    # serviceAccount:
+    #   annotations:
+    #     iam.gke.io/gcp-service-account: <gsa-name>@<project>.iam.gserviceaccount.com
+    # structuredConfig:
+    #   storage:
+    #     backend: gcs
+    #     gcs:
+    #       bucket_name: <gcs-bucket-name>

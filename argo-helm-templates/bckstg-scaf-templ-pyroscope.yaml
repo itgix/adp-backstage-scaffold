@@ -3,7 +3,7 @@ kind: Template
 metadata:
   name: pyroscope
   title: Grafana Pyroscope
-  description: Installs Grafana Pyroscope as an optional platform tool into the environment's applications GitOps repository. Adds the Pyroscope wrapper chart and its ArgoCD Application configured for S3 storage with IRSA, then opens a pull or merge request.
+  description: Installs Grafana Pyroscope as an optional platform tool into the environment's applications GitOps repository. Adds the Pyroscope wrapper chart and its ArgoCD Application, then opens a pull or merge request. Object storage and the service-account identity are configured per environment in the generated per-environment values file.
   tags:
     - pyroscope
     - profiling
@@ -30,24 +30,6 @@ spec:
           type: string
           description: Namespace Pyroscope is deployed into.
           default: monitoring
-    - title: Object storage
-      required: [bucket_name, workload_identity_name]
-      properties:
-        bucket_name:
-          title: Object storage bucket name
-          type: string
-          description: Name of the existing bucket where Pyroscope stores profiling data (an S3 bucket on AWS, a GCS bucket on GCP). The cloud is determined by the target environment's infra facts.
-          ui:help: "e.g. bet99-s3-cc1-dev-pyroscope-data"
-        workload_identity_name:
-          title: Workload identity name
-          type: string
-          description: >-
-            Identity bound to the Pyroscope service account for bucket access.
-            On AWS this is the IAM role name (the ARN is built as
-            arn:aws:iam::<account_id>:role/<name> for IRSA). On GCP this is the
-            Google service account name or full email (used for Workload Identity
-            via iam.gke.io/gcp-service-account).
-          ui:help: "AWS: e.g. PyroscopeSARole  |  GCP: e.g. pyroscope-sa or pyroscope-sa@<project>.iam.gserviceaccount.com"
     - title: Git provider
       properties:
         git_provider:
@@ -67,8 +49,6 @@ spec:
           stage: ${{ parameters.stage }}
           region: ${{ parameters.region }}
           namespace: ${{ parameters.namespace }}
-          bucket_name: ${{ parameters.bucket_name }}
-          workload_identity_name: ${{ parameters.workload_identity_name }}
 
     - id: rename-dirs
       name: Rename the directories with the proper region and stage
@@ -106,7 +86,13 @@ spec:
         branchName: 'feat/pyroscope'
         title: 'New platform tool: Pyroscope'
         sourcePath: .
-        description: 'This PR adds Grafana Pyroscope as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.'
+        description: |
+          This PR adds Grafana Pyroscope as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.
+
+          Before Pyroscope can store data, configure object storage and the
+          service-account identity for this environment in
+          `helm/pyroscope/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml`
+          (uncomment the AWS or GCP block in that file).
 
     - id: create-merge-request
       name: Create Feature Branch and Merge Request
@@ -118,7 +104,13 @@ spec:
         targetBranchName: 'main'
         title: 'New platform tool: Pyroscope'
         sourcePath: .
-        description: 'This MR adds Grafana Pyroscope as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.'
+        description: |
+          This MR adds Grafana Pyroscope as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.
+
+          Before Pyroscope can store data, configure object storage and the
+          service-account identity for this environment in
+          `helm/pyroscope/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml`
+          (uncomment the AWS or GCP block in that file).
 
   output:
     links:
