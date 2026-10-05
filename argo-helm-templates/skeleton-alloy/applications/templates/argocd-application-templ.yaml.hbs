@@ -1,0 +1,32 @@
+{{- if ne (index .Values "infra-services" "app_alloy_enabled") false }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  destination:
+    namespace: ${{ values.namespace }}
+    server: https://kubernetes.default.svc
+  project: 'applications'
+  source:
+    helm:
+      releaseName: alloy
+      valueFiles:
+      - ../applications/values/${{ values.stage }}/${{ values.region }}/infra-facts.yaml
+      - ../alloy/values.yaml
+      - ../alloy/values/${{ values.stage }}/${{ values.region }}/values.yaml
+    path: helm/alloy
+    repoURL: {{ index .Values "infra-services" "applications_destination_repo" }}
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - Replace=true
+  revisionHistoryLimit: 3
+{{- end }}

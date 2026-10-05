@@ -1,0 +1,110 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: alloy
+  title: Grafana Alloy
+  description: Installs Grafana Alloy as an optional platform tool into the environment's applications GitOps repository using the upstream chart defaults. Adds the Alloy wrapper chart and its ArgoCD Application, then opens a pull or merge request.
+  tags:
+    - alloy
+    - telemetry
+    - observability
+    - platform-tool
+spec:
+  owner: platform-team
+  type: platform-tool
+
+  parameters:
+    - title: Alloy placement
+      required: [stage, region]
+      properties:
+        stage:
+          title: On which stage to deploy
+          type: string
+          description: Stage (e.g., 'dev' or 'staging' or 'prod').
+        region:
+          title: On which region will Alloy run
+          type: string
+          description: The cloud region (e.g., 'ca-central-1').
+        namespace:
+          title: Kubernetes namespace
+          type: string
+          description: Namespace Alloy is deployed into.
+          default: monitoring
+    - title: Git provider
+      properties:
+        git_provider:
+          title: Git provider of the applications repository
+          type: string
+          enum: [github, gitlab]
+          default: github
+
+  steps:
+    - id: fetch-base
+      name: Fetch and Render Template
+      action: fetch:template
+      input:
+        url: ./skeleton-alloy/
+        targetPath: ./helm/
+        values:
+          stage: ${{ parameters.stage }}
+          region: ${{ parameters.region }}
+          namespace: ${{ parameters.namespace }}
+
+    - id: rename-dirs
+      name: Rename the directories with the proper region and stage
+      action: fs:rename
+      input:
+        files:
+        # 1) deepest files FIRST (strip .hbs)
+        - from: helm/alloy/values/STAGE/REGION/values.yaml.hbs
+          to: helm/alloy/values/STAGE/REGION/values.yaml
+
+        - from: helm/alloy/values.yaml.hbs
+          to: helm/alloy/values.yaml
+
+        - from: helm/alloy/Chart.yaml.hbs
+          to: helm/alloy/Chart.yaml
+
+        # 2) argocd application template (already outside the alloy chart)
+        - from: helm/applications/templates/argocd-application-templ.yaml.hbs
+          to: helm/applications/templates/application-alloy.yaml
+
+        # 3) REGION directory
+        - from: helm/alloy/values/STAGE/REGION
+          to: helm/alloy/values/STAGE/${{ parameters.region }}
+
+        # 4) STAGE directory
+        - from: helm/alloy/values/STAGE
+          to: helm/alloy/values/${{ parameters.stage }}
+
+    - id: create-pull-request
+      name: Create Feature Branch and Pull Request
+      if: ${{ parameters.git_provider == 'github' }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: 'github.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/alloy'
+        title: 'New platform tool: Alloy'
+        sourcePath: .
+        description: 'This PR adds Grafana Alloy as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.'
+
+    - id: create-merge-request
+      name: Create Feature Branch and Merge Request
+      if: ${{ parameters.git_provider == 'gitlab' }}
+      action: publish:gitlab:merge-request
+      input:
+        repoUrl: 'gitlab.itgix.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/alloy'
+        targetBranchName: 'main'
+        title: 'New platform tool: Alloy'
+        sourcePath: .
+        description: 'This MR adds Grafana Alloy as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.'
+
+  output:
+    links:
+      - title: Review the Pull Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'github' }}
+        url: ${{ steps['create-pull-request'].output.remoteUrl }}
+      - title: Review the Merge Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'gitlab' }}
+        url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}
