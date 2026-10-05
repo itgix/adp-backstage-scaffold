@@ -1,0 +1,80 @@
+{{- if ne (index .Values "infra-services" "app_pyroscope_enabled") false }}
+{{- $infraServices := index .Values "infra-services" }}
+{{- $cloud := default "aws" (index $infraServices "cloud") }}
+{{- $region := index $infraServices "region" }}
+{{- $bucket := "${{ values.bucket_name }}" }}
+{{- $wiName := "${{ values.workload_identity_name }}" }}
+{{- /* Per-cloud service-account annotation and PVC storage class. */ -}}
+{{- $saAnnotationKey := "" }}
+{{- $saAnnotationValue := "" }}
+{{- $storageClass := "" }}
+{{- if eq $cloud "gcp" }}
+{{- $gcpProject := default (index $infraServices "project_id") (index $infraServices "gcp_project_id") }}
+{{- $gsaEmail := $wiName }}
+{{- if not (contains "@" $wiName) }}
+{{- $gsaEmail = printf "%s@%s.iam.gserviceaccount.com" $wiName $gcpProject }}
+{{- end }}
+{{- $saAnnotationKey = "iam.gke.io/gcp-service-account" }}
+{{- $saAnnotationValue = $gsaEmail }}
+{{- $storageClass = default "standard-rwo" (index $infraServices "storage_class_name") }}
+{{- else }}
+{{- $accountId := index $infraServices "aws_account_id" }}
+{{- $saAnnotationKey = "eks.amazonaws.com/role-arn" }}
+{{- $saAnnotationValue = printf "arn:aws:iam::%v:role/%s" $accountId $wiName }}
+{{- $storageClass = default "gp3" (index $infraServices "storage_class_name") }}
+{{- end }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pyroscope
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  destination:
+    namespace: pyroscope
+    server: https://kubernetes.default.svc
+  project: 'applications'
+  source:
+    helm:
+      releaseName: pyroscope
+      valueFiles:
+      - ../applications/values/${{ values.stage }}/${{ values.region }}/infra-facts.yaml
+      - ../pyroscope/values.yaml
+      - ../pyroscope/values/${{ values.stage }}/${{ values.region }}/values.yaml
+      values: |
+        pyroscope:
+          persistence:
+            storageClassName: {{ $storageClass }}
+          serviceAccount:
+            annotations:
+              {{ $saAnnotationKey }}: {{ $saAnnotationValue }}
+          structuredConfig:
+            storage:
+{{- if eq $cloud "gcp" }}
+              backend: gcs
+              gcs:
+                bucket_name: {{ $bucket }}
+{{- else }}
+              backend: s3
+              s3:
+                bucket_name: {{ $bucket }}
+                endpoint: s3.dualstack.{{ $region }}.amazonaws.com
+                region: {{ $region }}
+                insecure: false
+                native_aws_auth_enabled: true
+                sse:
+                  type: SSE-S3
+{{- end }}
+    path: helm/pyroscope
+    repoURL: {{ index .Values "infra-services" "applications_destination_repo" }}
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - Replace=true
+  revisionHistoryLimit: 3
+{{- end }}

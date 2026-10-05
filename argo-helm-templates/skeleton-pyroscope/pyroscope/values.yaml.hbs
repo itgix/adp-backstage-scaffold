@@ -1,0 +1,30 @@
+# Base values for the Grafana Pyroscope wrapper chart.
+# The upstream chart is aliased as `pyroscope`.
+#
+# Cloud-specific storage configuration is injected at sync time by the ArgoCD
+# Application (see helm/applications), derived from `infra-services` facts:
+#   - AWS: backend `s3`, with endpoint/region and an `eks.amazonaws.com/role-arn`
+#          service-account annotation (IRSA).
+#   - GCP: backend `gcs`, with an `iam.gke.io/gcp-service-account` service-account
+#          annotation (Workload Identity).
+# The storage bucket name and the workload-identity name are chosen when this
+# template is scaffolded.
+agent:
+  enabled: false
+
+minio:
+  enabled: false
+
+pyroscope:
+  persistence:
+    # Whether a PersistentVolume is used (structural). size and storageClassName
+    # are set elsewhere: size per environment, storageClassName per cloud by the
+    # ArgoCD Application.
+    enabled: true
+
+  serviceAccount:
+    create: true
+    name: pyroscope
+
+# replicaCount, persistence.size and resources are configured per environment in
+# ./values/<stage>/<region>/values.yaml.

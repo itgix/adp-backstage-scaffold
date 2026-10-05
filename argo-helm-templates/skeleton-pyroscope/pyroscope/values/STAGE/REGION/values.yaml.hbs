@@ -1,0 +1,15 @@
+# Per-environment configuration for Pyroscope on stage ${{ values.stage }}, region ${{ values.region }}.
+# Values here override ../../../values.yaml. Keys live under the upstream chart alias `pyroscope`.
+# Tune these per environment (e.g. larger size/resources/replicas in prod).
+pyroscope:
+  replicaCount: 1
+
+  persistence:
+    size: 20Gi
+
+  resources:
+    limits:
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 2Gi

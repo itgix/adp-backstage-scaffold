@@ -1,0 +1,124 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: pyroscope
+  title: Grafana Pyroscope
+  description: Installs Grafana Pyroscope as an optional platform tool into the environment's applications GitOps repository. Adds the Pyroscope wrapper chart and its ArgoCD Application configured for S3 storage with IRSA, then opens a pull or merge request.
+  tags:
+    - pyroscope
+    - profiling
+    - observability
+    - platform-tool
+spec:
+  owner: platform-team
+  type: platform-tool
+
+  parameters:
+    - title: Pyroscope placement
+      required: [stage, region]
+      properties:
+        stage:
+          title: On which stage to deploy
+          type: string
+          description: Stage (e.g., 'dev' or 'staging' or 'prod').
+        region:
+          title: On which region will Pyroscope run
+          type: string
+          description: The cloud region (e.g., 'ca-central-1').
+    - title: Object storage
+      required: [bucket_name, workload_identity_name]
+      properties:
+        bucket_name:
+          title: Object storage bucket name
+          type: string
+          description: Name of the existing bucket where Pyroscope stores profiling data (an S3 bucket on AWS, a GCS bucket on GCP). The cloud is determined by the target environment's infra facts.
+          ui:help: "e.g. bet99-s3-cc1-dev-pyroscope-data"
+        workload_identity_name:
+          title: Workload identity name
+          type: string
+          description: >-
+            Identity bound to the Pyroscope service account for bucket access.
+            On AWS this is the IAM role name (the ARN is built as
+            arn:aws:iam::<account_id>:role/<name> for IRSA). On GCP this is the
+            Google service account name or full email (used for Workload Identity
+            via iam.gke.io/gcp-service-account).
+          ui:help: "AWS: e.g. PyroscopeSARole  |  GCP: e.g. pyroscope-sa or pyroscope-sa@<project>.iam.gserviceaccount.com"
+    - title: Git provider
+      properties:
+        git_provider:
+          title: Git provider of the applications repository
+          type: string
+          enum: [github, gitlab]
+          default: github
+
+  steps:
+    - id: fetch-base
+      name: Fetch and Render Template
+      action: fetch:template
+      input:
+        url: ./skeleton-pyroscope/
+        targetPath: ./helm/
+        values:
+          stage: ${{ parameters.stage }}
+          region: ${{ parameters.region }}
+          bucket_name: ${{ parameters.bucket_name }}
+          workload_identity_name: ${{ parameters.workload_identity_name }}
+
+    - id: rename-dirs
+      name: Rename the directories with the proper region and stage
+      action: fs:rename
+      input:
+        files:
+        # 1) deepest files FIRST (strip .hbs)
+        - from: helm/pyroscope/values/STAGE/REGION/values.yaml.hbs
+          to: helm/pyroscope/values/STAGE/REGION/values.yaml
+
+        - from: helm/pyroscope/values.yaml.hbs
+          to: helm/pyroscope/values.yaml
+
+        - from: helm/pyroscope/Chart.yaml.hbs
+          to: helm/pyroscope/Chart.yaml
+
+        # 2) argocd application template (already outside the pyroscope chart)
+        - from: helm/applications/templates/argocd-application-templ.yaml.hbs
+          to: helm/applications/templates/application-pyroscope.yaml
+
+        # 3) REGION directory
+        - from: helm/pyroscope/values/STAGE/REGION
+          to: helm/pyroscope/values/STAGE/${{ parameters.region }}
+
+        # 4) STAGE directory
+        - from: helm/pyroscope/values/STAGE
+          to: helm/pyroscope/values/${{ parameters.stage }}
+
+    - id: create-pull-request
+      name: Create Feature Branch and Pull Request
+      if: ${{ parameters.git_provider == 'github' }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: 'github.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/pyroscope'
+        title: 'New platform tool: Pyroscope'
+        sourcePath: .
+        description: 'This PR adds Grafana Pyroscope as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.'
+
+    - id: create-merge-request
+      name: Create Feature Branch and Merge Request
+      if: ${{ parameters.git_provider == 'gitlab' }}
+      action: publish:gitlab:merge-request
+      input:
+        repoUrl: 'gitlab.itgix.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/pyroscope'
+        targetBranchName: 'main'
+        title: 'New platform tool: Pyroscope'
+        sourcePath: .
+        description: 'This MR adds Grafana Pyroscope as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.'
+
+  output:
+    links:
+      - title: Review the Pull Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'github' }}
+        url: ${{ steps['create-pull-request'].output.remoteUrl }}
+      - title: Review the Merge Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'gitlab' }}
+        url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}
