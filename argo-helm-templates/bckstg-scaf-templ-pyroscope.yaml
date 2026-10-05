@@ -25,6 +25,11 @@ spec:
           title: On which region will Pyroscope run
           type: string
           description: The cloud region (e.g., 'ca-central-1').
+        namespace:
+          title: Kubernetes namespace
+          type: string
+          description: Namespace Pyroscope is deployed into.
+          default: monitoring
     - title: Object storage
       required: [bucket_name, workload_identity_name]
       properties:
@@ -61,6 +66,7 @@ spec:
         values:
           stage: ${{ parameters.stage }}
           region: ${{ parameters.region }}
+          namespace: ${{ parameters.namespace }}
           bucket_name: ${{ parameters.bucket_name }}
           workload_identity_name: ${{ parameters.workload_identity_name }}
 

@@ -32,7 +32,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "4"
 spec:
   destination:
-    namespace: pyroscope
+    namespace: ${{ values.namespace }}
     server: https://kubernetes.default.svc
   project: 'applications'
   source:
