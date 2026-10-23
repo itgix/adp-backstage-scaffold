@@ -83,7 +83,7 @@ spec:
         method: POST
         path: /proxy/devops-agent/api/v1/index/refresh?force=true
         # The action's default is 60 s; a forced re-index of the repository takes minutes
-        timeout: 1800000
+        timeout: 360000
         headers:
           content-type: application/json
 
@@ -94,8 +94,7 @@ spec:
         method: POST
         path: /proxy/devops-agent/api/v1/generate
         # The action's default is 60 s; a generate run with correction rounds takes minutes
-        # (up to 3 model calls of BEDROCK_READ_TIMEOUT_SECONDS each, 600 s by default)
-        timeout: 1800000
+        timeout: 360000
         headers:
           content-type: application/json
         body:
