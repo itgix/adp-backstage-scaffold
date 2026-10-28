@@ -3,7 +3,7 @@ kind: Template
 metadata:
   name: nexus-repository
   title: Nexus Repository
-  description: Installs Sonatype Nexus Repository (Community Edition) as an optional platform tool into the environment's applications GitOps repository. A self-hosted artifact repository with hosted, proxy and group repositories for Maven, npm, PyPI, Docker, Helm and raw files, which also caches public registries. Adds the Nexus wrapper chart and its ArgoCD Application (AWS: ALB ingress, gp3 storage), then opens a pull or merge request.
+  description: Installs Sonatype Nexus Repository (Community Edition) as an optional platform tool into the environment's applications GitOps repository. A self-hosted artifact repository with hosted, proxy and group repositories for Maven, npm, PyPI, Docker, Helm and raw files, which also caches public registries. Adds the Nexus wrapper chart and its ArgoCD Application (AWS only, with an ALB ingress and gp3 storage), then opens a pull or merge request.
   tags:
     - nexus
     - artifact-repository
