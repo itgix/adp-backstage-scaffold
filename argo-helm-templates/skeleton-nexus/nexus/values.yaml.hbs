@@ -4,8 +4,12 @@
 # values/<stage>/<region>/values.yaml.
 nexus3:
   fullnameOverride: nexus
-  # New installs: the CSI volume plus the pod fsGroup handle data ownership.
-  chownDataDir: false
+  # Keep the chown-data-dir init container ON (the chart default). The chart mounts
+  # nexus.properties and logback files into /nexus-data/etc via subPath, so on a new
+  # volume Kubernetes creates /nexus-data/etc as root and Nexus (uid 200) fails with
+  # "AccessDeniedException: /nexus-data/etc/fabric". The init container (runs as root)
+  # creates those dirs and chowns /nexus-data to 200.
+  chownDataDir: true
   persistence:
     enabled: true
     accessMode: ReadWriteOnce
