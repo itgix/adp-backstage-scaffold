@@ -1,0 +1,18 @@
+# Static platform defaults for Nexus Repository.
+# Keys live under the upstream chart name `nexus3` (dependency without alias).
+# The ArgoCD Application injects the ingress class, annotations and host, and
+# the PVC storage class per cloud. Sizing (storage size, resources, JVM heap)
+# lives in values/<stage>/<region>/values.yaml.
+nexus3:
+  fullnameOverride: nexus
+  # New installs: the CSI volume plus the pod fsGroup handle data ownership.
+  chownDataDir: false
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    # size: per environment; storageClass: per cloud by the ArgoCD Application
+  ingress:
+    enabled: true
+    ingressClassName: ""
+    annotations: {}
+    hosts: []
