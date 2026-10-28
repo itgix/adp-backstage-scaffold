@@ -1,0 +1,170 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: nexus-repository
+  title: Nexus Repository
+  description: Installs Sonatype Nexus Repository (Community Edition) as an optional platform tool into the environment's applications GitOps repository. A self-hosted artifact repository with hosted, proxy and group repositories for Maven, npm, PyPI, Docker, Helm and raw files, which also caches public registries. Adds the Nexus wrapper chart and its ArgoCD Application (AWS only, with an ALB ingress and gp3 storage), then opens a pull or merge request.
+  tags:
+    - nexus
+    - artifact-repository
+    - maven
+    - npm
+    - docker
+    - platform-tool
+  links:
+    - title: Nexus Repository documentation
+      url: https://help.sonatype.com/en/sonatype-nexus-repository.html
+      icon: docs
+    - title: nexus3 Helm chart
+      url: https://github.com/stevehipwell/helm-charts/tree/main/charts/nexus3
+      icon: github
+spec:
+  owner: platform-team
+  type: platform-tool
+
+  parameters:
+    - title: Nexus placement
+      required: [stage, region]
+      properties:
+        stage:
+          title: On which stage to deploy
+          type: string
+          description: Stage (e.g., 'dev' or 'staging' or 'prod').
+        region:
+          title: On which region will Nexus run
+          type: string
+          description: The cloud region (e.g., 'eu-west-2').
+        hostname:
+          title: Ingress hostname
+          type: string
+          description: Optional DNS name for the Nexus ingress.
+          ui:help: "Leave empty for <project_name>-<region>-nexus-<environment>.<dns_main_domain>"
+    - title: Sizing
+      properties:
+        storage_size:
+          title: Storage size
+          type: string
+          description: PVC size for blobs and the embedded database. It can only be grown later.
+          default: 50Gi
+          pattern: '^[0-9]+(Gi|Ti)$'
+        cpu_request:
+          title: CPU request
+          type: string
+          default: 500m
+          pattern: '^[0-9]+m?$'
+        memory_request:
+          title: Memory request
+          type: string
+          default: 4Gi
+          pattern: '^[0-9]+(Mi|Gi)$'
+          ui:help: "Nexus (JVM) uses ~3.5Gi steadily; keep request = limit."
+        cpu_limit:
+          title: CPU limit
+          type: string
+          default: "2"
+          pattern: '^[0-9]+m?$'
+        memory_limit:
+          title: Memory limit
+          type: string
+          default: 4Gi
+          pattern: '^[0-9]+(Mi|Gi)$'
+        java_heap:
+          title: JVM heap (-Xms/-Xmx)
+          type: string
+          default: 2048m
+          pattern: '^[0-9]+[mg]$'
+          ui:help: "Keep heap + 1Gi direct memory below the memory limit."
+    - title: Git provider
+      properties:
+        git_provider:
+          title: Git provider of the applications repository
+          type: string
+          enum: [github, gitlab]
+          default: github
+
+  steps:
+    - id: fetch-base
+      name: Fetch and Render Template
+      action: fetch:template
+      input:
+        url: ./skeleton-nexus/
+        targetPath: ./helm/
+        values:
+          stage: ${{ parameters.stage }}
+          region: ${{ parameters.region }}
+          hostname: ${{ parameters.hostname }}
+          storage_size: ${{ parameters.storage_size }}
+          cpu_request: ${{ parameters.cpu_request }}
+          memory_request: ${{ parameters.memory_request }}
+          cpu_limit: ${{ parameters.cpu_limit }}
+          memory_limit: ${{ parameters.memory_limit }}
+          java_heap: ${{ parameters.java_heap }}
+
+    - id: rename-dirs
+      name: Rename the directories with the proper region and stage
+      action: fs:rename
+      input:
+        files:
+        # 1) deepest files FIRST (strip .hbs)
+        - from: helm/nexus/values/STAGE/REGION/values.yaml.hbs
+          to: helm/nexus/values/STAGE/REGION/values.yaml
+
+        - from: helm/nexus/values.yaml.hbs
+          to: helm/nexus/values.yaml
+
+        - from: helm/nexus/Chart.yaml.hbs
+          to: helm/nexus/Chart.yaml
+
+        # 2) argocd application template (already outside the nexus chart)
+        - from: helm/applications/templates/argocd-application-templ.yaml.hbs
+          to: helm/applications/templates/application-nexus.yaml
+
+        # 3) REGION directory
+        - from: helm/nexus/values/STAGE/REGION
+          to: helm/nexus/values/STAGE/${{ parameters.region }}
+
+        # 4) STAGE directory
+        - from: helm/nexus/values/STAGE
+          to: helm/nexus/values/${{ parameters.stage }}
+
+    - id: create-pull-request
+      name: Create Feature Branch and Pull Request
+      if: ${{ parameters.git_provider == 'github' }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: 'github.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/nexus'
+        title: 'New platform tool: Nexus Repository'
+        sourcePath: .
+        description: |
+          This PR adds Sonatype Nexus Repository as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.
+          Sizing (storage, CPU/memory, JVM heap) lives in
+          `helm/nexus/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml`.
+          First sign-in: user `admin`, initial password in `/nexus-data/admin.password`
+          inside pod `nexus-0` (namespace `nexus`); change it in the setup wizard.
+
+    - id: create-merge-request
+      name: Create Feature Branch and Merge Request
+      if: ${{ parameters.git_provider == 'gitlab' }}
+      action: publish:gitlab:merge-request
+      input:
+        repoUrl: 'gitlab.itgix.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/nexus'
+        targetBranchName: 'main'
+        title: 'New platform tool: Nexus Repository'
+        sourcePath: .
+        description: |
+          This MR adds Sonatype Nexus Repository as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.
+          Sizing (storage, CPU/memory, JVM heap) lives in
+          `helm/nexus/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml`.
+          First sign-in: user `admin`, initial password in `/nexus-data/admin.password`
+          inside pod `nexus-0` (namespace `nexus`); change it in the setup wizard.
+
+  output:
+    links:
+      - title: Review the Pull Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'github' }}
+        url: ${{ steps['create-pull-request'].output.remoteUrl }}
+      - title: Review the Merge Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'gitlab' }}
+        url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}

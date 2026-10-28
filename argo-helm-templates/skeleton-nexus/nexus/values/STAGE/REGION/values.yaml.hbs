@@ -1,0 +1,15 @@
+# Per-environment configuration for Nexus Repository on stage ${{ values.stage }}, region ${{ values.region }}.
+# Values here override ../../../values.yaml. Keys live under the upstream chart name `nexus3`.
+# persistence.size can only be grown later (resize the PVC manually).
+nexus3:
+  persistence:
+    size: ${{ values.storage_size }}
+  resources:
+    requests:
+      cpu: "${{ values.cpu_request }}"
+      memory: ${{ values.memory_request }}
+    limits:
+      cpu: "${{ values.cpu_limit }}"
+      memory: ${{ values.memory_limit }}
+  # Keep heap + 1Gi direct memory + ~1Gi overhead below limits.memory.
+  install4jAddVmParams: "-Xms${{ values.java_heap }} -Xmx${{ values.java_heap }} -XX:MaxDirectMemorySize=1024m"

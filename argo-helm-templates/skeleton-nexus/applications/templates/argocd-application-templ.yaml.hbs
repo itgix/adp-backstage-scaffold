@@ -1,0 +1,40 @@
+{{- if ne (index .Values "infra-services" "app_nexus_enabled") false }}
+{{- $facts := index .Values "infra-services" }}
+{{- $host := default (printf "%s-%s-nexus-%s.%s" $facts.project_name $facts.region $facts.environment $facts.dns_main_domain) "${{ values.hostname }}" }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nexus
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  destination:
+    namespace: nexus
+    server: https://kubernetes.default.svc
+  project: 'applications'
+  source:
+    helm:
+      releaseName: nexus
+      valueFiles:
+      - ../applications/values/${{ values.stage }}/${{ values.region }}/infra-facts.yaml
+      - ../nexus/values.yaml
+      - ../nexus/values/${{ values.stage }}/${{ values.region }}/values.yaml
+      values: |
+        nexus3:
+          ingress:
+            hosts:
+              - {{ $host }}
+            annotations:
+              external-dns.alpha.kubernetes.io/hostname: {{ $host }}
+    path: helm/nexus
+    repoURL: {{ $facts.applications_destination_repo }}
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+  revisionHistoryLimit: 3
+{{- end }}

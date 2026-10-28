@@ -9,3 +9,4 @@ spec:
     - ./argo-helm-templates/bckstg-scaf-templ-devlake.yaml
     - ./argo-helm-templates/bckstg-scaf-templ-pyroscope.yaml
     - ./argo-helm-templates/bckstg-scaf-templ-alloy.yaml
+    - ./argo-helm-templates/bckstg-scaf-templ-nexus.yaml

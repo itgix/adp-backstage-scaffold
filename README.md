@@ -11,6 +11,7 @@ All templates live in `argo-helm-templates/`.
 - `bckstg-scaf-templ-devlake.yaml` - Apache DevLake as an optional platform tool, GitHub or GitLab chosen by a parameter.
 - `bckstg-scaf-templ-pyroscope.yaml` - Grafana Pyroscope as an optional platform tool, with cloud-aware object storage (AWS S3 or GCP GCS).
 - `bckstg-scaf-templ-alloy.yaml` - Grafana Alloy as an optional platform tool, installed with the upstream chart defaults.
+- `bckstg-scaf-templ-nexus.yaml` - Sonatype Nexus Repository as an optional platform tool (artifact repository and proxy cache).
 
 The first two are scaffolder forms, registered individually in Backstage; the rest are optional platform applications listed in `catalog-info.yaml`. Other files in the directory (the Phoenix variant, the dynamic environment variables template, the bulk version update and the DevOps agent request) are not registered in the catalog.
 
@@ -107,3 +108,30 @@ The pull or merge request (branch `feat/alloy`) adds to the applications reposit
 - `helm/applications/templates/application-alloy.yaml` - the ArgoCD Application (namespace from the `namespace` input). No per-cloud values are injected; the chart defaults flow through unchanged.
 
 The Application renders unless `app_alloy_enabled` is set to `false` in the environment's infra-facts values (set it in the installer config YAML); remove the file or set the switch to uninstall.
+
+## Nexus Repository
+
+Template `nexus-repository` ("Nexus Repository") installs Sonatype Nexus Repository (Community Edition) into the environment's applications repository. It is a self-hosted artifact repository with hosted, proxy and group repositories for Maven, npm, PyPI, Docker, Helm and raw files. The chart is pinned to the community chart `stevehipwell/nexus3` `5.27.0` (Nexus `3.97.0`).
+
+Prerequisites in the target environment (AWS only):
+
+- The AWS Load Balancer Controller and the `gp3` storage class.
+- Infra-facts values in the applications repository providing `project_name`, `region`, `environment`, `dns_main_domain` and `applications_destination_repo`.
+
+Inputs: `stage` and `region` (required), `hostname` (optional; empty means `<project_name>-<region>-nexus-<environment>.<dns_main_domain>`), sizing (`storage_size` default `50Gi`, `cpu_request` `500m`, `memory_request` `4Gi`, `cpu_limit` `2`, `memory_limit` `4Gi`, `java_heap` `2048m`) and `git_provider` (`github` or `gitlab`, default `github`).
+
+The pull or merge request (branch `feat/nexus`) adds to the applications repository:
+
+- `helm/nexus/` - wrapper chart around the `nexus3` chart: persistence on `gp3`, ALB ingress with the health check path `/service/rest/v1/status`.
+- `helm/nexus/values/<stage>/<region>/values.yaml` - per-environment sizing from the form (PVC size, resources, JVM heap).
+- `helm/applications/templates/application-nexus.yaml` - the ArgoCD Application (namespace `nexus`). It only sets the ingress host.
+
+The Application renders unless `app_nexus_enabled` is set to `false` in the environment's infra-facts values (set it in the installer config YAML); remove the file or set the switch to uninstall.
+
+First sign-in: user `admin`; Nexus generates the initial password on first start. Read it once with `kubectl -n nexus exec nexus-0 -- cat /nexus-data/admin.password` and change it in the setup wizard.
+
+Notes:
+
+- Community Edition uses the embedded database and has usage limits; check Sonatype's current terms before heavy use.
+- Docker hosted/group repositories on dedicated connector ports are not exposed by this template.
+- The PVC size can only be grown, and the StatefulSet volume claim is immutable, so a later size change needs a manual PVC resize.
