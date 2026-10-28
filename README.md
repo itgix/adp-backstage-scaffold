@@ -113,18 +113,18 @@ The Application renders unless `app_alloy_enabled` is set to `false` in the envi
 
 Template `nexus-repository` ("Nexus Repository") installs Sonatype Nexus Repository (Community Edition) into the environment's applications repository. It is a self-hosted artifact repository with hosted, proxy and group repositories for Maven, npm, PyPI, Docker, Helm and raw files. The chart is pinned to the community chart `stevehipwell/nexus3` `5.27.0` (Nexus `3.97.0`).
 
-Prerequisites in the target environment:
+Prerequisites in the target environment (AWS only):
 
-- The ingress controller (AWS Load Balancer Controller on AWS, GCE ingress on GCP) and a CSI driver with the `gp3` (AWS) or `standard-rwo` (GCP) storage class.
-- Infra-facts values in the applications repository providing `cloud`, `project_name`, `region`, `environment`, `dns_main_domain` and `applications_destination_repo`.
+- The AWS Load Balancer Controller and the `gp3` storage class.
+- Infra-facts values in the applications repository providing `project_name`, `region`, `environment`, `dns_main_domain` and `applications_destination_repo`.
 
-Inputs: `stage` and `region` (required), `hostname` (optional; empty means `<project_name>-<region>-nexus-<environment>.<dns_main_domain>`), sizing (`storage_size` default `50Gi`, `cpu_request` `500m`, `memory_request` `2Gi`, `cpu_limit` `2`, `memory_limit` `4Gi`, `java_heap` `2048m`) and `git_provider` (`github` or `gitlab`, default `github`).
+Inputs: `stage` and `region` (required), `hostname` (optional; empty means `<project_name>-<region>-nexus-<environment>.<dns_main_domain>`), sizing (`storage_size` default `50Gi`, `cpu_request` `500m`, `memory_request` `4Gi`, `cpu_limit` `2`, `memory_limit` `4Gi`, `java_heap` `2048m`) and `git_provider` (`github` or `gitlab`, default `github`).
 
 The pull or merge request (branch `feat/nexus`) adds to the applications repository:
 
-- `helm/nexus/` - wrapper chart around the `nexus3` chart (persistence on, ingress on), and on GCP the `ManagedCertificate` and `FrontendConfig`.
+- `helm/nexus/` - wrapper chart around the `nexus3` chart: persistence on `gp3`, ALB ingress with the health check path `/service/rest/v1/status`.
 - `helm/nexus/values/<stage>/<region>/values.yaml` - per-environment sizing from the form (PVC size, resources, JVM heap).
-- `helm/applications/templates/application-nexus.yaml` - the ArgoCD Application (namespace `nexus`). It injects the ingress class, annotations (including the ALB health check path `/service/rest/v1/status` on AWS) and host, and the PVC storage class per cloud.
+- `helm/applications/templates/application-nexus.yaml` - the ArgoCD Application (namespace `nexus`). It only sets the ingress host.
 
 The Application renders unless `app_nexus_enabled` is set to `false` in the environment's infra-facts values (set it in the installer config YAML); remove the file or set the switch to uninstall.
 

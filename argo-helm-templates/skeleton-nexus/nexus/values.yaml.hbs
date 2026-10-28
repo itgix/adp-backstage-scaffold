@@ -1,8 +1,7 @@
-# Static platform defaults for Nexus Repository.
-# Keys live under the upstream chart name `nexus3` (dependency without alias).
-# The ArgoCD Application injects the ingress class, annotations and host, and
-# the PVC storage class per cloud. Sizing (storage size, resources, JVM heap)
-# lives in values/<stage>/<region>/values.yaml.
+# Static platform defaults for Nexus Repository (AWS: ALB ingress, gp3 storage).
+# Keys live under the upstream chart name `nexus3`. The ArgoCD Application only sets
+# the ingress host. Sizing (storage size, resources, JVM heap) lives in
+# values/<stage>/<region>/values.yaml.
 nexus3:
   fullnameOverride: nexus
   # New installs: the CSI volume plus the pod fsGroup handle data ownership.
@@ -10,9 +9,14 @@ nexus3:
   persistence:
     enabled: true
     accessMode: ReadWriteOnce
-    # size: per environment; storageClass: per cloud by the ArgoCD Application
+    storageClass: gp3
   ingress:
     enabled: true
-    ingressClassName: ""
-    annotations: {}
-    hosts: []
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/healthcheck-path: /service/rest/v1/status
+      alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400
