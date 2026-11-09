@@ -1,0 +1,61 @@
+# Per-environment configuration for SonarQube on stage ${{ values.stage }}, region ${{ values.region }}.
+# Values here override ../../../values.yaml.
+database:
+  mode: ${{ values.db_mode }}
+{%- if values.db_mode == 'external' %}
+  external:
+    remoteKey: "${{ values.db_credentials_remote_key }}"
+{%- else %}
+  cnpg:
+    instances: ${{ values.db_instances }}
+    storageSize: ${{ values.db_storage_size }}
+{%- endif %}
+
+sonarqube:
+{%- if values.edition == 'community' %}
+  community:
+    enabled: true
+{%- else %}
+  community:
+    enabled: false
+  edition: ${{ values.edition }}
+{%- endif %}
+  # The edition cannot be switched from community to developer/enterprise after install.
+  jdbcOverwrite:
+    enabled: true
+{%- if values.db_mode == 'external' %}
+    # sslmode=require: TLS without certificate verification (verify-full needs the RDS CA).
+    jdbcUrl: "jdbc:postgresql://${{ values.db_host }}:${{ values.db_port }}/${{ values.db_name }}?sslmode=require"
+    # Placeholder: SONAR_JDBC_USERNAME in env below overrides it.
+    jdbcUsername: from-secret
+    jdbcSecretName: sonarqube-db-credentials
+    jdbcSecretPasswordKey: password
+  env:
+    - name: SONAR_JDBC_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: sonarqube-db-credentials
+          key: username
+{%- else %}
+    # sonarqube-db-* follow database.cnpg.clusterName; change them together.
+    jdbcUrl: "jdbc:postgresql://sonarqube-db-rw:5432/sonarqube"
+    # SONAR_JDBC_USERNAME in env below overrides it.
+    jdbcUsername: sonarqube
+    jdbcSecretName: sonarqube-db-app
+    jdbcSecretPasswordKey: password
+  env:
+    - name: SONAR_JDBC_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: sonarqube-db-app
+          key: username
+{%- endif %}
+  persistence:
+    size: ${{ values.storage_size }}
+  resources:
+    requests:
+      cpu: "${{ values.cpu_request }}"
+      memory: ${{ values.memory_request }}
+    limits:
+      cpu: "${{ values.cpu_limit }}"
+      memory: ${{ values.memory_limit }}

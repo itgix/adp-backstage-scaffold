@@ -1,0 +1,249 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: sonarqube
+  title: SonarQube
+  description: Installs SonarQube Server (Community Build, Developer or Enterprise Edition) as an optional platform tool into the environment's applications GitOps repository. Continuous code quality and security analysis (static analysis, SAST, quality gates) for your projects. Adds the SonarQube wrapper chart and its ArgoCD Application (AWS only, with an ALB ingress and gp3 storage), then opens a pull or merge request. The database is either a CloudNativePG cluster in the namespace (needs the cloudnative-pg operator, argoinfra `enable_cloudnative_pg`) or an external PostgreSQL whose credentials come from AWS Secrets Manager. Both modes need the External Secrets Operator with the ClusterSecretStore `secretstore-aws`.
+  tags:
+    - sonarqube
+    - code-quality
+    - sast
+    - platform-tool
+  links:
+    - title: SonarQube Server documentation
+      url: https://docs.sonarsource.com/sonarqube-server/
+      icon: docs
+    - title: SonarQube Helm chart
+      url: https://github.com/SonarSource/helm-chart-sonarqube
+      icon: github
+spec:
+  owner: platform-team
+  type: platform-tool
+  parameters:
+    - title: SonarQube placement
+      required: [stage, region, edition]
+      properties:
+        stage:
+          title: On which stage to deploy
+          type: string
+          description: Stage (e.g., 'dev' or 'staging' or 'prod').
+        region:
+          title: On which region will SonarQube run
+          type: string
+          description: The cloud region (e.g., 'eu-west-2').
+        hostname:
+          title: Ingress hostname
+          type: string
+          description: Optional DNS name for the SonarQube ingress.
+          pattern: '^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$'
+          ui:help: "Leave empty for <project_name>-<region>-sonarqube-<environment>.<dns_main_domain>"
+        ingress_enabled:
+          title: Expose SonarQube through an ALB ingress
+          type: boolean
+          default: true
+        edition:
+          title: Edition
+          type: string
+          enum: [community, developer, enterprise]
+          enumNames: [Community Build, Developer Edition, Enterprise Edition]
+          default: community
+          ui:help: "Developer and Enterprise need a license key, entered in the SonarQube UI after install (Administration > Configuration > License Manager). Pick the edition now: switching from Community later is not supported."
+    - title: Database
+      required: [db_mode]
+      properties:
+        db_mode:
+          title: Database
+          type: string
+          description: CloudNativePG needs the cloudnative-pg operator in the cluster (argoinfra `enable_cloudnative_pg`). External needs an existing PostgreSQL 14-18 database owned by the user, with UTF-8 encoding.
+          enum: [cnpg, external]
+          enumNames:
+            - CloudNativePG cluster in the namespace (needs the cloudnative-pg operator)
+            - External PostgreSQL
+          default: cnpg
+      dependencies:
+        db_mode:
+          oneOf:
+            - properties:
+                db_mode:
+                  enum: [cnpg]
+                db_instances:
+                  title: PostgreSQL instances
+                  type: integer
+                  enum: [1, 2, 3]
+                  default: 1
+                db_storage_size:
+                  title: PostgreSQL storage size
+                  type: string
+                  default: 10Gi
+                  pattern: '^[0-9]+(Gi|Ti)$'
+            - properties:
+                db_mode:
+                  enum: [external]
+                db_host:
+                  title: PostgreSQL host
+                  type: string
+                  description: Hostname of the external PostgreSQL (e.g. the RDS endpoint).
+                  pattern: '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'
+                db_port:
+                  title: PostgreSQL port
+                  type: integer
+                  default: 5432
+                  minimum: 1
+                  maximum: 65535
+                db_name:
+                  title: Database name
+                  type: string
+                  default: sonarqube
+                  pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+                db_credentials_remote_key:
+                  title: Credentials secret in AWS Secrets Manager
+                  type: string
+                  description: Full Secrets Manager secret name, read through the ClusterSecretStore secretstore-aws.
+                  pattern: '^[A-Za-z0-9/_+=.@!-]+$'
+                  ui:help: 'The secret value must be JSON with the keys "username" and "password" of a dedicated SonarQube DB user (owner of the database) with a non-rotating password. Do not use the RDS-managed master secret (rds!cluster-...): it rotates every 7 days, and SonarQube reads the password only at pod start. The connection uses sslmode=require (TLS mandatory).'
+              required: [db_host, db_port, db_name, db_credentials_remote_key]
+    - title: Sizing
+      properties:
+        storage_size:
+          title: Storage size
+          type: string
+          description: PVC size for the SonarQube data (Elasticsearch indexes, plugins). It can be grown later.
+          default: 20Gi
+          pattern: '^[0-9]+(Gi|Ti)$'
+        cpu_request:
+          title: CPU request
+          type: string
+          default: 500m
+          pattern: '^[0-9]+m?$'
+        memory_request:
+          title: Memory request
+          type: string
+          default: 6Gi
+          pattern: '^[0-9]+(Mi|Gi)$'
+          ui:help: "SonarQube runs three JVMs (web, compute engine, Elasticsearch); keep request = limit."
+        cpu_limit:
+          title: CPU limit
+          type: string
+          default: "2"
+          pattern: '^[0-9]+m?$'
+        memory_limit:
+          title: Memory limit
+          type: string
+          default: 6Gi
+          pattern: '^[0-9]+(Mi|Gi)$'
+    - title: Git provider
+      properties:
+        git_provider:
+          title: Git provider of the applications repository
+          type: string
+          enum: [github, gitlab]
+          default: github
+  steps:
+    - id: fetch-base
+      name: Fetch and Render Template
+      action: fetch:template
+      input:
+        url: ./skeleton-sonarqube/
+        targetPath: ./helm/
+        values:
+          stage: ${{ parameters.stage }}
+          region: ${{ parameters.region }}
+          hostname: ${{ parameters.hostname }}
+          ingress_enabled: ${{ parameters.ingress_enabled }}
+          edition: ${{ parameters.edition }}
+          db_mode: ${{ parameters.db_mode }}
+          db_instances: ${{ parameters.db_instances }}
+          db_storage_size: ${{ parameters.db_storage_size }}
+          db_host: ${{ parameters.db_host }}
+          db_port: ${{ parameters.db_port }}
+          db_name: ${{ parameters.db_name }}
+          db_credentials_remote_key: ${{ parameters.db_credentials_remote_key }}
+          storage_size: ${{ parameters.storage_size }}
+          cpu_request: ${{ parameters.cpu_request }}
+          memory_request: ${{ parameters.memory_request }}
+          cpu_limit: ${{ parameters.cpu_limit }}
+          memory_limit: ${{ parameters.memory_limit }}
+    - id: rename-dirs
+      name: Rename the directories with the proper region and stage
+      action: fs:rename
+      input:
+        files:
+        # 1) deepest files FIRST (strip .hbs)
+        - from: helm/sonarqube/values/STAGE/REGION/values.yaml.hbs
+          to: helm/sonarqube/values/STAGE/REGION/values.yaml
+        - from: helm/sonarqube/templates/passcode.yaml.hbs
+          to: helm/sonarqube/templates/passcode.yaml
+        - from: helm/sonarqube/templates/admin-password.yaml.hbs
+          to: helm/sonarqube/templates/admin-password.yaml
+        - from: helm/sonarqube/templates/database-cnpg.yaml.hbs
+          to: helm/sonarqube/templates/database-cnpg.yaml
+        - from: helm/sonarqube/templates/database-external-secret.yaml.hbs
+          to: helm/sonarqube/templates/database-external-secret.yaml
+        - from: helm/sonarqube/values.yaml.hbs
+          to: helm/sonarqube/values.yaml
+        - from: helm/sonarqube/Chart.yaml.hbs
+          to: helm/sonarqube/Chart.yaml
+        # 2) argocd application template (already outside the sonarqube chart)
+        - from: helm/applications/templates/argocd-application-templ.yaml.hbs
+          to: helm/applications/templates/application-sonarqube.yaml
+        # 3) REGION directory
+        - from: helm/sonarqube/values/STAGE/REGION
+          to: helm/sonarqube/values/STAGE/${{ parameters.region }}
+        # 4) STAGE directory
+        - from: helm/sonarqube/values/STAGE
+          to: helm/sonarqube/values/${{ parameters.stage }}
+    - id: create-pull-request
+      name: Create Feature Branch and Pull Request
+      if: ${{ parameters.git_provider == 'github' }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: 'github.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/sonarqube'
+        title: 'New platform tool: SonarQube'
+        sourcePath: .
+        description: |
+          This PR adds SonarQube (${{ parameters.edition }}) as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.
+          Edition, database and sizing live in
+          `helm/sonarqube/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml`.
+          Database mode: `${{ parameters.db_mode }}`. `cnpg` needs the cloudnative-pg operator;
+          `external` needs the Secrets Manager secret `${{ parameters.db_credentials_remote_key }}` (JSON username/password of a dedicated,
+          non-rotating SonarQube DB user; JDBC uses `sslmode=require`).
+          Both modes need the External Secrets Operator with the ClusterSecretStore `secretstore-aws`.
+          Admin login: user `admin` with a password generated in-cluster; a PostSync hook Job replaces admin/admin as soon as SonarQube is UP. Read it with
+          `kubectl -n sonarqube get secret sonarqube-admin -o jsonpath='{.data.password}' | base64 -d`
+          Ingress: the ALB class and annotations are merged with `ingress_class_name`/`aws_ingress_class_name` and
+          `ingress_annotations`/`aws_ingress_annotations` from infra-facts (an internal scheme there makes SonarQube internal).
+          `Replace=true` is deliberately not set (unlike other Applications): `kubectl replace` would drop controller-set fields on the Ingress, CNPG and ESO objects.
+          Developer/Enterprise: enter the license key in Administration > Configuration > License Manager.
+    - id: create-merge-request
+      name: Create Feature Branch and Merge Request
+      if: ${{ parameters.git_provider == 'gitlab' }}
+      action: publish:gitlab:merge-request
+      input:
+        repoUrl: 'gitlab.itgix.com?owner=${{ environment.secrets.repoOwner }}&repo=${{ environment.secrets.repoName }}'
+        branchName: 'feat/sonarqube'
+        targetBranchName: 'main'
+        title: 'New platform tool: SonarQube'
+        sourcePath: .
+        description: |
+          This MR adds SonarQube (${{ parameters.edition }}) as an optional platform tool for stage ${{ parameters.stage }}, region ${{ parameters.region }}.
+          Edition, database and sizing live in
+          `helm/sonarqube/values/${{ parameters.stage }}/${{ parameters.region }}/values.yaml`.
+          Database mode: `${{ parameters.db_mode }}`. `cnpg` needs the cloudnative-pg operator;
+          `external` needs the Secrets Manager secret `${{ parameters.db_credentials_remote_key }}` (JSON username/password of a dedicated,
+          non-rotating SonarQube DB user; JDBC uses `sslmode=require`).
+          Both modes need the External Secrets Operator with the ClusterSecretStore `secretstore-aws`.
+          Admin login: user `admin` with a password generated in-cluster; a PostSync hook Job replaces admin/admin as soon as SonarQube is UP. Read it with
+          `kubectl -n sonarqube get secret sonarqube-admin -o jsonpath='{.data.password}' | base64 -d`
+          Ingress: the ALB class and annotations are merged with `ingress_class_name`/`aws_ingress_class_name` and
+          `ingress_annotations`/`aws_ingress_annotations` from infra-facts (an internal scheme there makes SonarQube internal).
+          `Replace=true` is deliberately not set (unlike other Applications): `kubectl replace` would drop controller-set fields on the Ingress, CNPG and ESO objects.
+          Developer/Enterprise: enter the license key in Administration > Configuration > License Manager.
+  output:
+    links:
+      - title: Review the Pull Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'github' }}
+        url: ${{ steps['create-pull-request'].output.remoteUrl }}
+      - title: Review the Merge Request and merge to apply changes
+        if: ${{ parameters.git_provider == 'gitlab' }}
+        url: ${{ steps['create-merge-request'].output.mergeRequestUrl }}

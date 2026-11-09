@@ -1,0 +1,31 @@
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: sonarqube-passcode
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  length: 40
+  digits: 10
+  symbols: 0
+  noUpper: false
+  allowRepeat: true
+---
+# Generated once and kept stable.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: sonarqube-passcode
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  refreshInterval: "0"
+  target:
+    name: sonarqube-passcode
+    creationPolicy: Owner
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: sonarqube-passcode
