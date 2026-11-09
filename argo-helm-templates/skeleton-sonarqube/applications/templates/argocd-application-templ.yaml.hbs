@@ -1,0 +1,79 @@
+{{- define "sonarqube.ingressClassName" -}}
+{{- $infraServices := .infraServices -}}
+{{- $className := default "alb" (index $infraServices "ingress_class_name") -}}
+{{- default $className (index $infraServices "aws_ingress_class_name") -}}
+{{- end -}}
+{{- define "sonarqube.ingressAnnotations" -}}
+{{- $infraServices := .infraServices -}}
+{{- $annotations := dict "external-dns.alpha.kubernetes.io/hostname" .host -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/listen-ports" "[{\"HTTP\": 80}, {\"HTTPS\": 443}]" -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/scheme" "internet-facing" -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/ssl-redirect" "443" -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/target-type" "ip" -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/healthcheck-path" "/api/system/status" -}}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/target-group-attributes" "stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400" -}}
+{{- /* Env-wide overrides from infra-facts (certificate ARN, WAF, group.name, internal scheme), as DevLake. */ -}}
+{{- $commonAnnotations := default dict (index $infraServices "ingress_annotations") -}}
+{{- $cloudAnnotations := default dict (index $infraServices "aws_ingress_annotations") -}}
+{{- $annotations = mergeOverwrite $annotations $commonAnnotations $cloudAnnotations -}}
+{{- toYaml $annotations -}}
+{{- end -}}
+{{- if ne (index .Values "infra-services" "app_sonarqube_enabled") false }}
+{{- $infraServices := index .Values "infra-services" }}
+{% if values.hostname -%}
+{{- $host := "${{ values.hostname }}" }}
+{%- else -%}
+{{- $host := printf "%s-%s-sonarqube-%s.%s" (index $infraServices "project_name") (index $infraServices "region") (index $infraServices "environment") (index $infraServices "dns_main_domain") }}
+{%- endif %}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sonarqube
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  destination:
+    namespace: sonarqube
+    server: https://kubernetes.default.svc
+  project: 'applications'
+  source:
+    helm:
+      releaseName: sonarqube
+      valueFiles:
+      - ../applications/values/${{ values.stage }}/${{ values.region }}/infra-facts.yaml
+      - ../sonarqube/values.yaml
+      - ../sonarqube/values/${{ values.stage }}/${{ values.region }}/values.yaml
+      values: |
+        sonarqube:
+          ingress:
+{%- if values.ingress_enabled %}
+            enabled: true
+            ingressClassName: {{ include "sonarqube.ingressClassName" (dict "infraServices" $infraServices) }}
+            hosts:
+              - name: {{ $host }}
+                path: /
+                pathType: Prefix
+            annotations:
+{{- include "sonarqube.ingressAnnotations" (dict "infraServices" $infraServices "host" $host) | nindent 14 }}
+{%- else %}
+            enabled: false
+{%- endif %}
+    path: helm/sonarqube
+    repoURL: {{ index .Values "infra-services" "applications_destination_repo" }}
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 3
+{{- end }}

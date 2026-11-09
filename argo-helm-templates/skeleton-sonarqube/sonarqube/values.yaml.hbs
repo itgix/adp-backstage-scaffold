@@ -1,0 +1,57 @@
+# `database:` drives the wrapper templates; keys under `sonarqube:` go to the upstream chart.
+database:
+  # cnpg | external
+  mode: cnpg
+  cnpg:
+    # The per-env jdbcOverwrite and SONAR_JDBC_USERNAME hardcode sonarqube-db-rw/-app; change them together.
+    clusterName: sonarqube-db
+    instances: 1
+    imageName: ghcr.io/cloudnative-pg/postgresql:17.11
+    storageSize: 10Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+  external:
+    secretStore: secretstore-aws
+    credentialsSecretName: sonarqube-db-credentials
+    # Use a non-rotating secret (not the RDS master secret): the password is read only at pod start.
+    remoteKey: ""
+
+sonarqube:
+  fullnameOverride: sonarqube
+  tests:
+    enabled: false
+  monitoringPasscodeSecretName: sonarqube-passcode
+  monitoringPasscodeSecretKey: password
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    storageClass: gp3
+  # Elasticsearch needs vm.max_map_count >= 524288; disable only on tuned nodes.
+  initSysctl:
+    enabled: true
+  # Keep on: a new EBS volume is root-owned and this chowns the data dirs to uid 1000.
+  initFs:
+    enabled: true
+  initContainers:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  setAdminPassword:
+    passwordSecretName: sonarqube-admin
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+  # Ingress is set by the ArgoCD Application, merged with the infra-facts ingress keys.

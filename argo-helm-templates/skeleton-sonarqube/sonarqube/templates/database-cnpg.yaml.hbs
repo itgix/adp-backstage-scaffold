@@ -1,0 +1,24 @@
+{{- if not (has .Values.database.mode (list "cnpg" "external")) }}
+{{- fail (printf "database.mode must be cnpg or external, got %q" .Values.database.mode) }}
+{{- end }}
+{{- if eq .Values.database.mode "cnpg" }}
+# Needs the cloudnative-pg operator.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.database.cnpg.clusterName }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  instances: {{ .Values.database.cnpg.instances }}
+  imageName: {{ .Values.database.cnpg.imageName }}
+  storage:
+    size: {{ .Values.database.cnpg.storageSize }}
+    storageClass: gp3
+  bootstrap:
+    initdb:
+      database: sonarqube
+      owner: sonarqube
+  resources:
+    {{- toYaml .Values.database.cnpg.resources | nindent 4 }}
+{{- end }}
